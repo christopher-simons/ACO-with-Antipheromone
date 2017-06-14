@@ -14,6 +14,8 @@ import problem.ProblemController;
 
 public class BatchMain 
 {
+    private static ProblemController problemController;
+    
     /**
      * BatchMain developed for adaptive anti-pheromone experiments
      * June 2017
@@ -41,7 +43,7 @@ public class BatchMain
         }
         System.out.println( "selected path for output files is: " + Parameters.outputFilePath );
         
-        // set up initial parameters...
+        // set up initial algorithm parameters...
         
         // default number of ants is 100, override here...
         // AlgorithmParameters.NUMBER_OF_ANTS = 100;
@@ -50,18 +52,23 @@ public class BatchMain
         // AlgorithmParameters.NUMBER_OF_ITERATIONS = 
         //    AlgorithmParameters.NUMBER_OF_EVALUATIONS / AlgorithmParameters.NUMBER_OF_ANTS;
         
+        // AlgorithmParameters.algorithm = AlgorithmParameters.SIMPLE_ACO;
         AlgorithmParameters.algorithm = AlgorithmParameters.MMAS;
+        
+        // keep this true for no invalid solutions
         AlgorithmParameters.constraintHandling = true;
+        
+        // firstly, set MMAS to usual i.e. reduce to minimum of MAXMIN
+        AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE = false;
         
         // default fitness is CBO
         AlgorithmParameters.fitness = AlgorithmParameters.COMBINED;
             
-        for( int problem = Parameters.CBS; problem <= Parameters.CBS; problem++ )
+        for( int problem = Parameters.CBS; problem <= Parameters.RANDOMISED; problem++ )
         {
+            Parameters.problemNumber = problem;
+            generateProblem( problem );
             
-            // firstly, set MMAS to usual i.e. reduce to minimum of MAXMIN
-            AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE = false;
-                
             for( int x = 0; x < 5; x++ )
             {
                 AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = x;
@@ -69,7 +76,7 @@ public class BatchMain
                     ", fitness is: " + AlgorithmParameters.fitness + 
                     ", MMAS subtractive AP is: " + AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE +
                     ", AP Threshold is: " + AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " ******"  );
-                doAntSearch( problem );
+                doAntSearch( );
 
             }   // end for threshold values 0..9
 
@@ -89,58 +96,18 @@ public class BatchMain
     }
     
     /**
-     * do the ant search for a particular problem
-     * @param problemNumber
+     * do the ant search
+     * Design problem have been set up
+     * 14 June 2017
      */
-    
-    public static void doAntSearch( int problemNumber )
+    public static void doAntSearch( )
     {
-        assert problemNumber >= 0;
-        assert problemNumber <= Parameters.NUMBER_OF_PROBLEMS;
+        assert problemController != null;
         
-        Parameters.problemNumber = problemNumber;
+        // System.out.println( "Number of Ants is : " + AlgorithmParameters.NUMBER_OF_ANTS ); 
+        // System.out.println( "Number of Iterations is : " + AlgorithmParameters.NUMBER_OF_ITERATIONS );
         
-        System.out.println( "Number of Ants is : " + AlgorithmParameters.NUMBER_OF_ANTS ); 
-        System.out.println( "Number of Iterations is : " + AlgorithmParameters.NUMBER_OF_ITERATIONS );
-        
-        ProblemController problemController = new ProblemController( );
-        
-        if( problemNumber == Parameters.CBS ) // Cinema Booking System
-        {
-            problemController.createDesignProblem5( );
-            problemController.setNumberOfClasses( 5 );
-            problemController.generateUseMatrix( );
-        }
-        else if( problemNumber == Parameters.GDP ) // GDP
-        {
-            problemController.createDesignProblem7( );
-            problemController.setNumberOfClasses( 5 );
-            problemController.generateUseMatrix( );
-        }
-        else if( problemNumber == Parameters.SC ) // Select Cruises
-        {
-            problemController.createDesignProblem6( );
-            problemController.setNumberOfClasses( 16 );
-            // 28 May 2012 test of constraint handling
-//            problemController.setNumberOfClasses( 5 );
-            
-            problemController.generateUseMatrix( );
-        }
-        else if( problemNumber == Parameters.RANDOMISED ) // Randomised
-        {
-            problemController.createDesignProblem8( );
-            problemController.setNumberOfClasses( 8 );
-                   
-            // 21 January 2016
-            problemController.initialiseWithPreGenerated( );
-            // problemController.showUseMatrix( );
-        }        
-        else
-        {
-            assert false : "impossible design problem!!";
-        }
-
-        // 17 January 2013
+        // create the ACO controller
         Controller controller = new Controller( problemController );
         
         for( int i = 0; i < Parameters.NUMBER_OF_RUNS; i++ )
@@ -152,6 +119,59 @@ public class BatchMain
         System.out.println( "batch ACO complete" );
     }
 
+    /**
+     * Generate the correct design problem for the current batch run,
+     * and generate it only once. 
+     * 14 June 2017
+     * @param problemNumber as int
+     */
+    private static void generateProblem( final int problemNumber )
+    {
+        assert problemNumber >= 0;
+        assert problemNumber < Parameters.NUMBER_OF_PROBLEMS;
+        
+        problemController = new ProblemController( );
+        assert problemController != null;
+        
+        // set up the Cinema Booking System (CBS) design problem
+        if( problemNumber == Parameters.CBS ) 
+        {
+            problemController.createDesignProblem5( );
+            problemController.setNumberOfClasses( 5 );
+            problemController.generateUseMatrix( );
+        }
+        // set up the GDP design problem
+        else if( problemNumber == Parameters.GDP ) 
+        {
+            problemController.createDesignProblem7( );
+            problemController.setNumberOfClasses( 5 );
+            problemController.generateUseMatrix( );
+        }
+        // set up the Randomised design problem
+        else if( problemNumber == Parameters.RANDOMISED  ) 
+        {
+            problemController.createDesignProblem8( );
+            problemController.setNumberOfClasses( 8 );
+                   
+            // 21 January 2016
+            problemController.initialiseWithPreGenerated( );
+            // problemController.showUseMatrix( );
+        } 
+        // set up the Select Cruises (SC) design problem
+        else if( problemNumber == Parameters.SC ) 
+        {
+            problemController.createDesignProblem6( );
+            problemController.setNumberOfClasses( 16 );
+            // 28 May 2012 test of constraint handling
+//            problemController.setNumberOfClasses( 5 );
+            
+            problemController.generateUseMatrix( );
+        }
+        else
+        {
+            assert false : "impossible design problem!!";
+        }
+    }
   
 }   // end of class
 
