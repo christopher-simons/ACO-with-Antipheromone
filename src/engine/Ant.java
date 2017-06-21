@@ -1046,6 +1046,27 @@ public class Ant
         return result;
     }
     
+    /**
+     * show the nodes of the current path
+     * 21 June 2017
+     */
+    public void showPath( ) 
+    {
+        Iterator< Node > it = currentPath.iterator( );
+        while( it.hasNext( ) )
+        {
+            Node n = it.next( );
+            
+            int number = n.getNumber( );
+            String name = n.getName( );
+            
+            System.out.println( number + " " + name + "\n");
+        }
+        System.out.println("END OF PATH");
+    }
+    
+   
+    
 }   // end class
 
 //------- end file ----------------------------------------

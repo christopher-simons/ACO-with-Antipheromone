@@ -487,6 +487,7 @@ public class Controller
                 ant.generateSolution( ); 
                 // ant.generateValidPath( ); 8 June 2017
                 
+ 
                 while( ant.isValidPath( ) == false )
                 {
                     ant.generateSolution( ); 
@@ -508,9 +509,10 @@ public class Controller
 //                }
             }
             attemptTotal += attempts;
+            
         }
         
-        System.err.println("attempt total for all ants in colony is: " + attemptTotal );
+//        System.err.println("attempt total for all ants in colony is: " + attemptTotal );
         
         numberOfRetries[ iterationCounter ] = retries;
         if( retries > 0 )
