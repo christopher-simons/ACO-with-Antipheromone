@@ -64,12 +64,12 @@ public class BatchMain
         // default fitness is CBO
         AlgorithmParameters.fitness = AlgorithmParameters.COMBINED;
             
-        for( int problem = Parameters.CBS; problem <= Parameters.RANDOMISED; problem++ )
+        for( int problem = Parameters.CBS; problem <= Parameters.CBS; problem++ )
         {
             Parameters.problemNumber = problem;
             generateProblem( problem );
             
-            for( int x = 0; x < 5; x++ )
+            for( int x = 0; x < 1; x++ )
             {
                 AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = x;
                 System.out.println( "******* problem is: " + problem + 
@@ -77,7 +77,6 @@ public class BatchMain
                     ", MMAS subtractive AP is: " + AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE +
                     ", AP Threshold is: " + AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " ******"  );
                 doAntSearch( );
-
             }   // end for threshold values 0..9
 
 //            for( int y = 10; y <= 100; y += 10 )

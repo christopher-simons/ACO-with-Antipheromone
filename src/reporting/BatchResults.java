@@ -25,6 +25,7 @@ import java.text.DecimalFormat;
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import myUtils.Utility;
 
 
 public class BatchResults 
@@ -39,8 +40,11 @@ public class BatchResults
     
     private static final String HEURISTIC_NAC_OUTPUT_NAME = "HeuristicResults.dat";
     
-    // 17 Nov 1015
+    // 17 Nov 2015
     private static final String BEST_COMBINED_FILE_NAME = "BestCOMBINED.dat";
+    
+    // 28 June 2017
+    private static final String RETRIES_ATTEMPTS_FILE_NAME = "RetriesAttempts.dat";
     
     /** number of iterations of ant colony */
     private final int numberOfIterations;
@@ -167,6 +171,18 @@ public class BatchResults
     private double[ ] finalBestEleganceATMRSD;
     private double[ ] finalBestEleganceModularity;
     private double[ ] finalBestEleganceModularitySD;
+    
+    
+    // 28 June 2018 for adaptive antipheromone
+    public int[ ][ ] retriesOverRuns;
+    public double[ ][ ] averageAttemptsOverRuns; 
+    
+    private double[ ] averageRetries;
+    private double[ ] averageOfAverageAttempts;
+    
+    private double retriesStdDev[ ];
+    private double attemptsStdDev[ ];
+   
     
     /**
      * constructor
@@ -303,6 +319,36 @@ public class BatchResults
         }
         
         df = new DecimalFormat( "0.000" );
+       
+        // 28 June 2017 for adaptive antipheromone
+        retriesOverRuns = new int[ numberOfRuns ][ numberOfIterations ];
+        averageAttemptsOverRuns = new double[ numberOfRuns ][ numberOfIterations ];
+        
+        averageRetries = new double[ numberOfIterations ];
+        averageOfAverageAttempts = new double[ numberOfIterations];
+        
+        retriesStdDev = new double[ numberOfIterations ];
+        attemptsStdDev = new double[ numberOfIterations ];
+        
+        for( int l = 0; l < numberOfRuns; l++ )
+        {
+            for( int m = 0; m < numberOfIterations; m++ )
+            {
+                retriesOverRuns[ l ][ m ] = 0;
+                averageAttemptsOverRuns[ l ][ m ] = 0.0;
+            }
+            
+            averageRetries[ l ] = 0.0;
+            averageOfAverageAttempts[ l ] = 0.0;
+        }
+    
+        for( int m = 0; m < numberOfIterations; m++ )
+        {
+            retriesStdDev[ m ] = 0.0;
+            attemptsStdDev[ m ] = 0.0;
+        }
+   
+        
     }
     
     /**
@@ -393,6 +439,49 @@ public class BatchResults
         
         }   // end for each run
         
+        
+        // 28 June 2018 for adaptive antipheromone
+        // calculate the average number of retries and attempts for each run
+        int runningTotalRetries[ ] = new int[ numberOfIterations ];
+        double runningTotalAttempts[ ] = new double[ numberOfIterations ];
+        
+        for( int r = 0; r < numberOfRuns; r++ )
+        {
+            for( int iteration = 0; iteration < numberOfIterations; iteration++ )
+            {
+                runningTotalRetries[ iteration ] += this.retriesOverRuns[ r ][ iteration ];
+                runningTotalAttempts[ iteration ] += this.averageAttemptsOverRuns[ r ][ iteration ];
+            }
+        }
+        
+        assert numberOfRuns > 0; // prevent divide by zero error
+        
+        for( int i = 0; i < numberOfIterations; i++ )
+        {
+            this.averageRetries[ i ] = (double) runningTotalRetries[ i ] / (double) numberOfRuns;
+            this.averageOfAverageAttempts[ i ] = runningTotalAttempts[ i ] / (double) numberOfRuns;
+            
+        }
+        
+        // 28 June 2017 for adaptive antipheromone
+        // calculate the standard deviations for retries and attempts
+        int iterationRetries[ ] = new int[ numberOfIterations ];
+        double iterationAttempts[ ] = new double[ numberOfIterations ];
+        
+        // double retriesStdDev[ ] = new double[ numberOfIterations ];
+        // double attemptsStdDev[ ] = new double[ numberOfIterations ];
+        
+        for( int it = 0; it < numberOfIterations; it++ )
+        {
+            for( int run = 0; run < numberOfRuns; run++ )
+            {
+                iterationRetries[ run ] = this.retriesOverRuns[ run ][ it ]; 
+                iterationAttempts[ run ] = this.averageAttemptsOverRuns[ run ][ it ];
+            }
+            
+            this.retriesStdDev[ it ] = Utility.standardDeviation( iterationRetries );
+            this.attemptsStdDev[ it ] = Utility.standardDeviation( iterationAttempts );
+        }
     }
     
     
@@ -686,20 +775,36 @@ public class BatchResults
             resultsFileFullName = Parameters.outputFilePath + "/" + outputFileName;
         }
         
+        // 28 June 2018 Adaptive Antipheromone
+        String retriesFileFullName = "";
         
-        System.out.println( "file name is: " + resultsFileFullName );
+        if( Parameters.platform == Parameters.Platform.Windows )
+        {
+            retriesFileFullName = Parameters.outputFilePath + "\\" + RETRIES_ATTEMPTS_FILE_NAME;
+        }
+        else    // we're on Mac
+        {
+            retriesFileFullName = Parameters.outputFilePath + "/" + RETRIES_ATTEMPTS_FILE_NAME;
+        }
+        
+        
+        System.out.println( "fitness results file name is: " + resultsFileFullName );
+        System.out.println( "retries and attempts file name is: " + retriesFileFullName );
         final String dir = System.getProperty( "user.dir" );
         System.out.println( "current execution directory is: " + dir );
         
         // set up the output files
         PrintWriter out1 = null;
+        PrintWriter out2 = null;
+        
         
         boolean append = true;
         try 
         {
             // don't want to overwrite existing result files
-            out1 = new PrintWriter( new FileWriter( 
-                new File( resultsFileFullName), append ) );
+            out1 = new PrintWriter( new FileWriter( new File( resultsFileFullName), append ) );
+            out2 = new PrintWriter( new FileWriter( new File( retriesFileFullName), append ) );
+            
         } 
         catch( IOException ex ) 
         {
@@ -747,7 +852,28 @@ public class BatchResults
                             this.maxNumberOfInvalids[ run ] );
         }
             
+        // 28 June 2017 for adaptive antipheromone
+        // write retry and attempt information to file
+        for( int iteration = 0; iteration < numberOfIterations; iteration++ )
+        {
+            out2.println(   // Parameters.problemNumber  + " " +
+                            ( iteration + 1 )  + " " + 
+                            // AlgorithmParameters.fitness + " " +
+                            // AlgorithmParameters.algorithm + " " +
+                            // AlgorithmParameters.NUMBER_OF_ANTS + " " +
+                            // antiPheromoneOn + " " +
+                            // AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " " +
+                            // MMAS_50_percent_on + " " + 
+                    
+                            df.format( this.averageRetries[ iteration ] ) + " " +
+                            df.format( this.retriesStdDev[ iteration ] ) + " " +
+                                    
+                            df.format( this.averageOfAverageAttempts[ iteration ] ) + " " +
+                            df.format( this.attemptsStdDev[ iteration ]) );
+        }
+        
         out1.close( );
+        out2.close( );
     }
      
     

@@ -17,11 +17,11 @@ package engine;
 import config.AlgorithmParameters;
 import config.Parameters;
 import daemonActions.DaemonOperators;
-import heuristics.HeuristicAnt2;
+// import heuristics.HeuristicAnt2;
 import heuristics.HeuristicInformation;
 import java.text.DecimalFormat;
 import java.util.*;
-import javax.swing.JOptionPane;
+// import javax.swing.JOptionPane;
 // import learning.Coefficients; commented out 6 June 2017
 // import learning.IterationInformation; commented out 6 June 2017
 // import learning.RegressionAgent; commented out 6 June 2017
@@ -386,11 +386,20 @@ public class Controller
             
             this.iterationRunTimes[ i ] = iterationTime;
                 
+            // copy fitness values to batch results structure for eventual writing to file 
             batchResults.bestDesignCouplingOverRuns[ runNumber ][ i ] = this.bestSoFarCBO;
             batchResults.bestEleganceNACOverRuns[ runNumber ][ i ] = this.bestSoFarEleganceNAC;
             batchResults.bestCombinedOverRuns[ runNumber ][ i ] = this.bestSoFarCombined;
             
-            // make ready for next iteration
+            // 28 June 2018
+            // copy solution generation retry and attempt information to batch results structure for writing to file
+            for( int j = 0; j < this.numberOfRetries.length; j++ )
+            {
+                batchResults.retriesOverRuns[ runNumber ][ j ] = this.numberOfRetries[ j ];
+                batchResults.averageAttemptsOverRuns[ runNumber ][ j ] = this.averageAttempts[ j ];
+            }
+            
+            // all done, so lastly make ready for next iteration
             if( AlgorithmParameters.replacementElitism == true ) { updateEliteArchive( ); }
             clearEnvironment( ); 
 
@@ -503,22 +512,26 @@ public class Controller
                 }
                 colony.add( ant.getPath( ) );
                 
-//                if( attempts > 100 )
-//                {
-//                    System.err.println( "number of attempts is: " + attempts );
-//                }
+                if( attempts > 100 )
+                {
+                    System.err.println( "number of attempts is: " + attempts );
+                }
             }
             attemptTotal += attempts;
             
         }
         
-//        System.err.println("attempt total for all ants in colony is: " + attemptTotal );
-        
         numberOfRetries[ iterationCounter ] = retries;
-        if( retries > 0 )
+        
+        if( retries > 0 ) // prevent divide by zero
         {    
             averageAttempts[ iterationCounter ] = (double) attemptTotal / (double) retries;
         }
+        
+//        System.out.println( "average number of attempts is: " + averageAttempts[ iterationCounter ] );
+//        System.out.println( "number of retries is: " + retries );
+//        System.out.println( "" );
+        
     }
     
     /**

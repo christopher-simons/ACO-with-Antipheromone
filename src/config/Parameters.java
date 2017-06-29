@@ -18,8 +18,8 @@ public class Parameters
     // 24 Nov 2015
     // PARAMETERS FOR BOTH BATCH MODE and INTERACTIVE MODE -----------
     public enum Platform { Windows, Mac }
-    public static Platform platform = Platform.Windows;
-    // public static final Platform platform = Platform.Mac;
+    // public static Platform platform = Platform.Windows;
+    public static final Platform platform = Platform.Mac;
 
     public enum Mode { Batch, Interactive }
     public static final Mode mode = Mode.Batch;
@@ -35,7 +35,7 @@ public class Parameters
     public static final int SC = 4;
     public static final int NUMBER_OF_PROBLEMS = SC + 1;
 
-    public static int NUMBER_OF_RUNS = 5;
+    public static int NUMBER_OF_RUNS = 50;
    
     // 8 December 2015 - for full robustness check in the generation of solutions
     // turn off for faster execution when happy with solution generation
