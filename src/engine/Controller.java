@@ -512,10 +512,10 @@ public class Controller
                 }
                 colony.add( ant.getPath( ) );
                 
-                if( attempts > 100 )
-                {
-                    System.err.println( "number of attempts is: " + attempts );
-                }
+//                if( attempts > 100 )
+//                {
+//                    System.err.println( "number of attempts is: " + attempts );
+//                }
             }
             attemptTotal += attempts;
             
