@@ -46,6 +46,11 @@ public class BatchResults
     // 28 June 2017
     private static final String RETRIES_ATTEMPTS_FILE_NAME = "RetriesAttempts.dat";
     
+    // 29 June 2017
+    private static final String COST_FILE_NAME = "Cost.dat";
+    
+    
+    
     /** number of iterations of ant colony */
     private final int numberOfIterations;
     
@@ -173,7 +178,7 @@ public class BatchResults
     private double[ ] finalBestEleganceModularitySD;
     
     
-    // 28 June 2018 for adaptive antipheromone
+    // 28 June 2017 for adaptive antipheromone
     public int[ ][ ] retriesOverRuns;
     public double[ ][ ] averageAttemptsOverRuns; 
     
@@ -183,6 +188,9 @@ public class BatchResults
     private double retriesStdDev[ ];
     private double attemptsStdDev[ ];
    
+    // 29 June 2017 for adaptive antipheromone
+    private double bestFcomb[ ];
+    private double bestFcombStdDev[ ];
     
     /**
      * constructor
@@ -348,7 +356,14 @@ public class BatchResults
             attemptsStdDev[ m ] = 0.0;
         }
    
-        
+        // 29 June 2017 for adaptive antipheromone
+        bestFcomb = new double[ numberOfIterations ];
+        bestFcombStdDev= new double[ numberOfIterations ];
+        for( int n = 0; n < numberOfIterations; n++ )
+        {
+            bestFcomb[ n ] = 0.0;
+            bestFcombStdDev[ n ] = 0.0;
+        }
     }
     
     /**
@@ -481,6 +496,38 @@ public class BatchResults
             
             this.retriesStdDev[ it ] = Utility.standardDeviation( iterationRetries );
             this.attemptsStdDev[ it ] = Utility.standardDeviation( iterationAttempts );
+        }
+    
+        // 29 June 2017 for adaptive pheromone
+        double runningTotalBestFcomb[ ] = new double[ numberOfIterations ];
+        
+        for( int r = 0; r < numberOfRuns; r++ )
+        {
+            for( int iteration = 0; iteration < numberOfIterations; iteration++ )
+            {
+                runningTotalBestFcomb[ iteration ] += this.bestCombinedOverRuns[ r ][ iteration ];
+            }
+        }
+        
+        assert numberOfRuns > 0; // prevent divide by zero error
+        
+        for( int i = 0; i < numberOfIterations; i++ )
+        {
+            this.bestFcomb[ i ] = (double) runningTotalBestFcomb[ i ] / (double) numberOfRuns;
+        }
+    
+        // 29 June 2017 for adaptive antipheromone
+        // calculate the standard deviations for retries and attempts
+        double localBestFcomb[ ] = new double[ numberOfIterations ];
+        
+        for( int it = 0; it < numberOfIterations; it++ )
+        {
+            for( int run = 0; run < numberOfRuns; run++ )
+            {
+                localBestFcomb[ run ] = this.bestCombinedOverRuns[ run ][ it ]; 
+            }
+            
+            this.bestFcombStdDev[ it ] = Utility.standardDeviation( localBestFcomb );
         }
     }
     
@@ -775,7 +822,7 @@ public class BatchResults
             resultsFileFullName = Parameters.outputFilePath + "/" + outputFileName;
         }
         
-        // 28 June 2018 Adaptive Antipheromone
+        // 28 June 2017 for Adaptive Antipheromone
         String retriesFileFullName = "";
         
         if( Parameters.platform == Parameters.Platform.Windows )
@@ -787,15 +834,29 @@ public class BatchResults
             retriesFileFullName = Parameters.outputFilePath + "/" + RETRIES_ATTEMPTS_FILE_NAME;
         }
         
+        // 29 June 2917 for Adaptive Antipheromone
+        String costFileFullName = "";
+        
+        if( Parameters.platform == Parameters.Platform.Windows )
+        {
+            costFileFullName = Parameters.outputFilePath + "\\" + COST_FILE_NAME;
+        }
+        else    // we're on Mac
+        {
+            costFileFullName = Parameters.outputFilePath + "/" + COST_FILE_NAME;
+        }
         
         System.out.println( "fitness results file name is: " + resultsFileFullName );
         System.out.println( "retries and attempts file name is: " + retriesFileFullName );
+        System.out.println( "cost information file name is: " + costFileFullName );
+        
         final String dir = System.getProperty( "user.dir" );
         System.out.println( "current execution directory is: " + dir );
         
         // set up the output files
         PrintWriter out1 = null;
         PrintWriter out2 = null;
+        PrintWriter out3 = null;
         
         
         boolean append = true;
@@ -804,7 +865,7 @@ public class BatchResults
             // don't want to overwrite existing result files
             out1 = new PrintWriter( new FileWriter( new File( resultsFileFullName), append ) );
             out2 = new PrintWriter( new FileWriter( new File( retriesFileFullName), append ) );
-            
+            out3 = new PrintWriter( new FileWriter( new File( costFileFullName), append ) );
         } 
         catch( IOException ex ) 
         {
@@ -872,8 +933,27 @@ public class BatchResults
                             df.format( this.attemptsStdDev[ iteration ]) );
         }
         
+        // 29 June 2017 for adaptive antipheromone
+        // write cost information to file
+        for( int iteration = 0; iteration < numberOfIterations; iteration++ )
+        {
+            out3.println(   // Parameters.problemNumber  + " " +
+                            ( iteration + 1 )  + " " + 
+                            // AlgorithmParameters.fitness + " " +
+                            // AlgorithmParameters.algorithm + " " +
+                            // AlgorithmParameters.NUMBER_OF_ANTS + " " +
+                            // antiPheromoneOn + " " +
+                            // AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " " +
+                            // MMAS_50_percent_on + " " + 
+                    
+                            df.format( this.bestFcomb[ iteration ] ) + " " +
+                            df.format( this.bestFcombStdDev[ iteration ] ) );
+                                    
+        }
+        
         out1.close( );
         out2.close( );
+        out3.close( );
     }
      
     

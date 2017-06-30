@@ -64,12 +64,12 @@ public class BatchMain
         // default fitness is CBO
         AlgorithmParameters.fitness = AlgorithmParameters.COMBINED;
             
-        for( int problem = Parameters.CBS; problem <= Parameters.CBS; problem++ )
+        for( int problem = Parameters.GDP; problem <= Parameters.GDP; problem++ )
         {
             Parameters.problemNumber = problem;
             generateProblem( problem );
             
-            for( int x = 0; x < 1; x++ )
+            for( int x = 4; x < 5; x++ )
             {
                 AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = x;
                 System.out.println( "******* problem is: " + problem + 

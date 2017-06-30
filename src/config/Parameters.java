@@ -18,8 +18,8 @@ public class Parameters
     // 24 Nov 2015
     // PARAMETERS FOR BOTH BATCH MODE and INTERACTIVE MODE -----------
     public enum Platform { Windows, Mac }
-    // public static Platform platform = Platform.Windows;
-    public static final Platform platform = Platform.Mac;
+    public static Platform platform = Platform.Windows;
+    // public static final Platform platform = Platform.Mac;
 
     public enum Mode { Batch, Interactive }
     public static final Mode mode = Mode.Batch;
