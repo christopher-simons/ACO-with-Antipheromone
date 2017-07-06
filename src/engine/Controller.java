@@ -21,6 +21,7 @@ import daemonActions.DaemonOperators;
 import heuristics.HeuristicInformation;
 import java.text.DecimalFormat;
 import java.util.*;
+
 // import javax.swing.JOptionPane;
 // import learning.Coefficients; commented out 6 June 2017
 // import learning.IterationInformation; commented out 6 June 2017
@@ -28,6 +29,7 @@ import java.util.*;
 // import myGui.VisualiseEvaluateDialog; commented out 6 June 2017
 import myUtils.Utility;
 import myUtils.Weights;
+import myUtils.PathComparator;
 // import net.sourceforge.openforecast.Observation; commented out 6 June 2017
 import pareto.ParetoOperators;
 import pheromone.AlphaTable;
@@ -569,7 +571,7 @@ public class Controller
         int counter = 0;
         
         // get each path in colony, and determine fitness etc.
-        for( Path path : colony )
+        for( Path path : this.colony )
         {
 //            path.showRawResults( );
             
@@ -577,69 +579,19 @@ public class Controller
             // calculates CBO, NAC, ATMTR and Combined in one go!
             DaemonOperators.calculateDesignSolutionPathFitness( path, problemController );
             
-            // CBO related fitness first
-            double externalCoupling = path.getCBO( );
+            // 5 July 2017
+            calculateBestAndWorst( path, counter );
             
-           // if( AlgorithmParameters.constraintHandling == true )
-           // {
-                if( externalCoupling == 0.0 )
-                {
-                    System.out.println( "impossible CBO for path: " + counter );
-                }
-          //  }
             // keep running total for iteration average
-            runningTotalCBO += externalCoupling; 
+            runningTotalCBO += path.getCBO( ); 
             
-            // check for best so far CBO
-            if( externalCoupling < this.bestSoFarCBO )
-            {
-                this.bestSoFarCBO = externalCoupling;
-                this.bestCBOIndex = counter;
-            }
-            
-            // check for worst so far CBO 07 Jan 2016
-            if( externalCoupling > this.worstSoFarCBO )
-            {
-                this.worstSoFarCBO = externalCoupling;
-                this.worstCBOIndex = counter;
-            }
-            
-            // check for best so far NAC
-            double eleganceNAC = path.getEleganceNAC( );
-            if( eleganceNAC < bestSoFarEleganceNAC )
-            {
-                this.bestSoFarEleganceNAC = eleganceNAC;
-                this.bestNACIndex = counter;
-            }
-            
-            // check for worst so far NAC 1 Feb 2016
-            if( eleganceNAC > this.worstSoFarNAC )
-            {
-                this.worstSoFarNAC = eleganceNAC;
-                this.worstCBOIndex = counter;
-            }
-            
-            
-            // 29 November 2015 Combined fitness secondly...
-            double combined = path.getCombined( );
-            if( combined < bestSoFarCombined )
-            {
-                this.bestSoFarCombined = combined;
-                this.bestCombinedIndex = counter;
-            }
-            
-            // check for worst so far CBO 07 Jan 2016
-            if( combined > worstSoFarCombined )
-            {
-                this.worstSoFarCBO = combined;
-                this.worstCombinedIndex = counter;
-            }
-            counter++;
-
             if( path.isValid( ) == false )
             {
                 invalidCounter++;
             }
+            
+            counter++;
+            
         }   // end for each solution path in the colony
 
         // 2 Feb 2016
@@ -647,7 +599,6 @@ public class Controller
         {
             this.maxInvalids = counter;
         }
-        
         
         assert runningTotalCBO >= 0.0;
         
@@ -675,6 +626,100 @@ public class Controller
         this.worstPathInColonyCBO = this.colony.get( this.worstCBOIndex );
         this.worstPathInColonyNAC = this.colony.get( this.worstNACIndex );
         this.worstPathInColonyCombined = this.colony.get( this.worstCombinedIndex );
+
+        
+        // 5 July 2017
+        // testSortColony( );
+    }
+    
+    // 5 July 2017
+    // Refactor calculation of best and worst solution paths 
+    // in colony into a method.
+    private void calculateBestAndWorst( final Path path, final int counter )
+    {
+        // CBO related fitness first
+        double externalCoupling = path.getCBO( );
+        assert externalCoupling != 0.0 : "impossible CBO for path: " + counter;
+
+        // check for best so far CBO
+        if( externalCoupling < this.bestSoFarCBO )
+        {
+            this.bestSoFarCBO = externalCoupling;
+            this.bestCBOIndex = counter;
+        }
+
+        // check for worst so far CBO 07 Jan 2016
+        if( externalCoupling > this.worstSoFarCBO )
+        {
+            this.worstSoFarCBO = externalCoupling;
+            this.worstCBOIndex = counter;
+        }
+
+        // check for best so far NAC
+        double eleganceNAC = path.getEleganceNAC( );
+        if( eleganceNAC < bestSoFarEleganceNAC )
+        {
+            this.bestSoFarEleganceNAC = eleganceNAC;
+            this.bestNACIndex = counter;
+        }
+
+        // check for worst so far NAC 1 Feb 2016
+        if( eleganceNAC > this.worstSoFarNAC )
+        {
+            this.worstSoFarNAC = eleganceNAC;
+            this.worstCBOIndex = counter;
+        }
+
+        // 29 November 2015 Combined fitness secondly...
+        double combined = path.getCombined( );
+        if( combined < bestSoFarCombined )
+        {
+            this.bestSoFarCombined = combined;
+            this.bestCombinedIndex = counter;
+        }
+
+        // check for worst so far CBO 07 Jan 2016
+        if( combined > worstSoFarCombined )
+        {
+            this.worstSoFarCBO = combined;
+            this.worstCombinedIndex = counter;
+        }
+    }
+    
+    // 5 July 2017
+    private void testSortColony( )
+    {
+        Path pathArray[ ] = new Path[ AlgorithmParameters.NUMBER_OF_ANTS ];
+        
+        int i = 0;
+        for( i = 0; i < pathArray.length; i++ )
+        {
+            pathArray[ i ] = new Path(  new DesignPathRole( ) );
+        }
+        
+        i = 0;
+        
+        for( Path p : this.colony )
+        {
+            System.out.println( p.getCombined( ) );
+            pathArray[ i ].setCombined( p.getCombined( ) );
+            i++;
+        }
+        
+        System.out.println("!!!!!!!! Order of paths before sorting is: ");
+ 
+        for( i = 0; i < colony.size( ); i++ ) 
+        {
+            System.out.println( pathArray[ i ].getCombined( ) );
+        }
+ 
+        Arrays.sort( pathArray, new PathComparator( ) );
+        System.out.println( "Order of paths after sorting by Fcomb is " );
+ 
+        for( int j = 0; j < colony.size( ); j++ ) 
+        {
+            System.out.println( pathArray[ j ].getCombined( ) );
+        }
         
     }
     
