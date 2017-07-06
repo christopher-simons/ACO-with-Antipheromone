@@ -12,7 +12,7 @@ public class AlgorithmParameters
 {
     public static final int SIMPLE_ACO = 1;
     public static final int MMAS = 2;
-    public static int algorithm = SIMPLE_ACO;
+    public static int algorithm = MMAS;
 
     // MMAS MAX and MIN Pheromone levels
     public static final double MMAS_PHEROMONE_MINIMUM = 0.5;
@@ -133,7 +133,7 @@ public class AlgorithmParameters
     public static double SIMPLE_ACO_RHO_ANTIPHEROMONE_ZERO = 0.0;
     
     // 20 January 2016
-    public static boolean MMAS_SUBTRACTIVE_ANTIPHEROMONE = true;
+    public static boolean MMAS_SUBTRACTIVE_ANTIPHEROMONE = false;
     public static double MMAS_RHO_ANTIPHEROMONE_HALF = 0.5;
     
     

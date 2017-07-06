@@ -28,7 +28,15 @@ public class BatchMain
             assert false : "no command line arguments required";
         }    
         
+        // ensure correct settings for July 2017
         assert Parameters.mode == Parameters.Mode.Batch;
+        
+        assert AlgorithmParameters.algorithm == AlgorithmParameters.MMAS;
+        assert AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE == false; // set MMAS to usual i.e. reduce to minimum of MAXMIN
+        
+        assert AlgorithmParameters.constraintHandling == true;  // no invalid solutions
+        assert AlgorithmParameters.NUMBER_OF_ANTS == 100;
+        assert AlgorithmParameters.NUMBER_OF_ITERATIONS == 1000;
         
         // Nov 2015 set up output file path for appropriate platform
         if( Parameters.platform == Parameters.Platform.Mac )
@@ -43,33 +51,14 @@ public class BatchMain
         }
         System.out.println( "selected path for output files is: " + Parameters.outputFilePath );
         
-        // set up initial algorithm parameters...
-        
-        // default number of ants is 100, override here...
-        // AlgorithmParameters.NUMBER_OF_ANTS = 100;
-        
-        // take the default number of iterations, based on 100000 evaluations
-        // AlgorithmParameters.NUMBER_OF_ITERATIONS = 
-        //    AlgorithmParameters.NUMBER_OF_EVALUATIONS / AlgorithmParameters.NUMBER_OF_ANTS;
-        
-        // AlgorithmParameters.algorithm = AlgorithmParameters.SIMPLE_ACO;
-        AlgorithmParameters.algorithm = AlgorithmParameters.MMAS;
-        
-        // keep this true for no invalid solutions
-        AlgorithmParameters.constraintHandling = true;
-        
-        // firstly, set MMAS to usual i.e. reduce to minimum of MAXMIN
-        AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE = false;
-        
-        // default fitness is CBO
-        AlgorithmParameters.fitness = AlgorithmParameters.COMBINED;
+        AlgorithmParameters.fitness = AlgorithmParameters.COMBINED;  // set up cost to Fcomb
             
-        for( int problem = Parameters.GDP; problem <= Parameters.GDP; problem++ )
+        for( int problem = Parameters.CBS; problem <= Parameters.CBS; problem++ )
         {
             Parameters.problemNumber = problem;
             generateProblem( problem );
             
-            for( int x = 4; x < 5; x++ )
+            for( int x = 9; x < 10; x++ )
             {
                 AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = x;
                 System.out.println( "******* problem is: " + problem + 
@@ -103,10 +92,6 @@ public class BatchMain
     {
         assert problemController != null;
         
-        // System.out.println( "Number of Ants is : " + AlgorithmParameters.NUMBER_OF_ANTS ); 
-        // System.out.println( "Number of Iterations is : " + AlgorithmParameters.NUMBER_OF_ITERATIONS );
-        
-        // create the ACO controller
         Controller controller = new Controller( problemController );
         
         for( int i = 0; i < Parameters.NUMBER_OF_RUNS; i++ )

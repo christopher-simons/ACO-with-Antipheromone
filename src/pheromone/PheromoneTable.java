@@ -54,7 +54,6 @@ public class PheromoneTable
        assert problemController != null;
        
        this.amList = amList;
-//       this.numberOfClasses = numberOfClasses; no longer required 17 January 2012
        
        this.size = amList.size( ) + numberOfClasses + 1; // plus one for the nest
        
@@ -165,10 +164,10 @@ public class PheromoneTable
                 if( useMatrix[ i ][ j ] == 1 )
                 {
                     // from methods to attributes firstly
-                    table[ i ][ j + actionListSize - 1 ] *= HEURISTIC_LOAD_FACTOR;
+                    this.table[ i ][ j + actionListSize - 1 ] *= HEURISTIC_LOAD_FACTOR;
                     
                     // from attributes to methods secondly
-                    table[ i + datumListSize - 1 ][ j ] *= HEURISTIC_LOAD_FACTOR; 
+                    this.table[ i + datumListSize - 1 ][ j ] *= HEURISTIC_LOAD_FACTOR; 
                 }
             }
         }
