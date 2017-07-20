@@ -53,12 +53,12 @@ public class BatchMain
         
         AlgorithmParameters.fitness = AlgorithmParameters.COMBINED;  // set up cost to Fcomb
             
-        for( int problem = Parameters.CBS; problem <= Parameters.CBS; problem++ )
+        for( int problem = Parameters.RANDOMISED; problem <= Parameters.RANDOMISED; problem++ )
         {
             Parameters.problemNumber = problem;
             generateProblem( problem );
             
-            for( int x = 9; x < 10; x++ )
+            for( int x = 5; x < 6; x++ )
             {
                 AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = x;
                 System.out.println( "******* problem is: " + problem + 

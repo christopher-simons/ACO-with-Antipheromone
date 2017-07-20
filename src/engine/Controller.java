@@ -72,6 +72,9 @@ public class Controller
     /** the colony, which contains all the solution paths */
     private List< Path > colony;
     
+    /** for sorting of the colony based on Fcomb 19 July 2017 */
+    Path pathArray[ ];
+    
     /** the table containing all the pheromone values */
     private PheromoneTable pheromoneTable;
     
@@ -176,6 +179,10 @@ public class Controller
             this.attributeList.size( ), this.methodList.size( ), Controller.numberOfClasses );
         
         colony = new ArrayList< >( );
+        
+        // 17 July 2017
+        pathArray = new Path[ NUMBER_OF_ANTS ];
+        
         eliteArchive = new Stack< >( );
         
         // set best so far values to arbitrary value
@@ -625,11 +632,17 @@ public class Controller
         // 7 January 2016
         this.worstPathInColonyCBO = this.colony.get( this.worstCBOIndex );
         this.worstPathInColonyNAC = this.colony.get( this.worstNACIndex );
+        
+        
         this.worstPathInColonyCombined = this.colony.get( this.worstCombinedIndex );
-
+        //System.out.println( "previous worst is: " + this.worstPathInColonyCombined.getCombined( ) );
         
         // 5 July 2017
-        // testSortColony( );
+        //makeSortedColony( );
+        
+        //this.worstPathInColonyCombined = this.pathArray[ NUMBER_OF_ANTS - 1 ];
+        // System.out.println( "update worst is: " + this.worstPathInColonyCombined.getCombined( ) );
+        //System.out.println( "for debug" );
     }
     
     // 5 July 2017
@@ -637,6 +650,10 @@ public class Controller
     // in colony into a method.
     private void calculateBestAndWorst( final Path path, final int counter )
     {
+        assert path != null;
+        assert counter >= 0;
+        assert counter < NUMBER_OF_ANTS;
+        
         // CBO related fitness first
         double externalCoupling = path.getCBO( );
         assert externalCoupling != 0.0 : "impossible CBO for path: " + counter;
@@ -667,7 +684,7 @@ public class Controller
         if( eleganceNAC > this.worstSoFarNAC )
         {
             this.worstSoFarNAC = eleganceNAC;
-            this.worstCBOIndex = counter;
+            this.worstNACIndex = counter;
         }
 
         // 29 November 2015 Combined fitness secondly...
@@ -678,18 +695,18 @@ public class Controller
             this.bestCombinedIndex = counter;
         }
 
-        // check for worst so far CBO 07 Jan 2016
+        // check for worst so far Combined 07 Jan 2016
         if( combined > worstSoFarCombined )
         {
-            this.worstSoFarCBO = combined;
+            this.worstSoFarCombined = combined;
             this.worstCombinedIndex = counter;
         }
     }
     
     // 5 July 2017
-    private void testSortColony( )
+    private void makeSortedColony( )
     {
-        Path pathArray[ ] = new Path[ AlgorithmParameters.NUMBER_OF_ANTS ];
+        this.pathArray = new Path[ AlgorithmParameters.NUMBER_OF_ANTS ];
         
         int i = 0;
         for( i = 0; i < pathArray.length; i++ )
@@ -701,25 +718,27 @@ public class Controller
         
         for( Path p : this.colony )
         {
-            System.out.println( p.getCombined( ) );
-            pathArray[ i ].setCombined( p.getCombined( ) );
+            // System.out.println( p.getCombined( ) );
+            this.pathArray[ i ].setCombined( p.getCombined( ) );
             i++;
         }
         
-        System.out.println("!!!!!!!! Order of paths before sorting is: ");
+//        System.out.println("!!!!!!!! Order of paths before sorting is: ");
+// 
+//        for( i = 0; i < colony.size( ); i++ ) 
+//        {
+//            System.out.println( pathArray[ i ].getCombined( ) );
+//        }
  
-        for( i = 0; i < colony.size( ); i++ ) 
-        {
-            System.out.println( pathArray[ i ].getCombined( ) );
-        }
- 
-        Arrays.sort( pathArray, new PathComparator( ) );
-        System.out.println( "Order of paths after sorting by Fcomb is " );
- 
-        for( int j = 0; j < colony.size( ); j++ ) 
-        {
-            System.out.println( pathArray[ j ].getCombined( ) );
-        }
+        // sort into ascending order of Fcomb value
+        Arrays.sort( this.pathArray, new PathComparator( ) );
+        
+//        System.out.println( "Order of paths after sorting by Fcomb is " );
+// 
+//        for( int j = 0; j < colony.size( ); j++ ) 
+//        {
+//            System.out.println( pathArray[ j ].getCombined( ) );
+//        }
         
     }
     
