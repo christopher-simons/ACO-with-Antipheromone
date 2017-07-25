@@ -58,14 +58,15 @@ public class BatchMain
             Parameters.problemNumber = problem;
             generateProblem( problem );
             
-            for( int x = 5; x < 6; x++ )
+            for( int x = 8; x < 9; x++ )
             {
                 AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = x;
                 System.out.println( "******* problem is: " + problem + 
                     ", fitness is: " + AlgorithmParameters.fitness + 
-                    ", MMAS subtractive AP is: " + AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE +
+                    // ", MMAS subtractive AP is: " + AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE +
                     ", AP Threshold is: " + AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " ******"  );
                 doAntSearch( );
+            
             }   // end for threshold values 0..9
 
 //            for( int y = 10; y <= 100; y += 10 )
