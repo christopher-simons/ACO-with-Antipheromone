@@ -633,16 +633,21 @@ public class Controller
         this.worstPathInColonyCBO = this.colony.get( this.worstCBOIndex );
         this.worstPathInColonyNAC = this.colony.get( this.worstNACIndex );
         
+        // 24 July 2017 find worst in colony (Fcomb) by sorting the colony according to Fcomb
         
-        this.worstPathInColonyCombined = this.colony.get( this.worstCombinedIndex );
-        //System.out.println( "previous worst is: " + this.worstPathInColonyCombined.getCombined( ) );
+        // this.worstPathInColonyCombined = this.colony.get( this.worstCombinedIndex ); OLD!!
+        // double previousWorstCombinedValue = this.worstPathInColonyCombined.getCombined( );
+        // System.out.println( "previous worst is: " + this.worstPathInColonyCombined.toString( ) + " " + previousWorstCombinedValue );
         
-        // 5 July 2017
-        //makeSortedColony( );
+        this.colony.sort( new PathComparator( ) );
         
-        //this.worstPathInColonyCombined = this.pathArray[ NUMBER_OF_ANTS - 1 ];
-        // System.out.println( "update worst is: " + this.worstPathInColonyCombined.getCombined( ) );
-        //System.out.println( "for debug" );
+        this.worstPathInColonyCombined = this.colony.get( NUMBER_OF_ANTS - 1 );
+ 
+        // double sortedColonyWorstCombinedValue = this.worstPathInColonyCombined.getCombined( );
+        // System.out.println( "  update worst is: " + this.worstPathInColonyCombined.toString( )+ " " + sortedColonyWorstCombinedValue );
+        
+        // assert previousWorstCombinedValue == sortedColonyWorstCombinedValue : "error in locating worst Fcomb!";
+        // System.out.println( "for debug" );
     }
     
     // 5 July 2017
@@ -716,10 +721,16 @@ public class Controller
         
         i = 0;
         
+        this.colony.sort( new PathComparator( ) );
+        
         for( Path p : this.colony )
         {
             // System.out.println( p.getCombined( ) );
             this.pathArray[ i ].setCombined( p.getCombined( ) );
+            
+            // 20 July 2017 for any future use of CBO or NAC metrics alone
+            this.pathArray[ i ].setCBO( p.getCBO( ) );
+            this.pathArray[ i ].setEleganceNAC( p.getEleganceNAC( ) );
             i++;
         }
         
