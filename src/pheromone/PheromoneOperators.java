@@ -145,6 +145,7 @@ public class PheromoneOperators
      * @param worstInColonyCBO worst path in the colony w.r.t. CBO
      * @param worstInColonyNAC
      * @param worstInColonyCombined worst path in the colony w.r.t. Combined
+     * @param secondWorstInColonyCombined second worst path in the colony w.r.t. Combined
      * @param iteration iteration count
      */
     public static void update( 
@@ -158,6 +159,8 @@ public class PheromoneOperators
         Path worstInColonyCBO,
         Path worstInColonyNAC,
         Path worstInColonyCombined,
+        Path secondWorstInColonyCombined,
+        Path thirdWorstInColonyCombined,
         int iteration )
     {
         assert pheromoneTable != null;
@@ -171,6 +174,8 @@ public class PheromoneOperators
         assert worstInColonyCBO != null;
         assert worstInColonyNAC != null;
         assert worstInColonyCombined != null;
+        assert secondWorstInColonyCombined != null;
+        assert thirdWorstInColonyCombined != null;
         assert iteration >= 0;
         
         if( AlgorithmParameters.algorithm == AlgorithmParameters.SIMPLE_ACO ) 
@@ -186,7 +191,7 @@ public class PheromoneOperators
         }
         else if( AlgorithmParameters.algorithm == AlgorithmParameters.MMAS ) 
         {
-            // MAX-MIN Ant System, so only best any lays pheromone
+            // MAX-MIN Ant System,with antipheromone extensions
             performMMASUpdate( 
                 colony, 
                 pheromoneTable, 
@@ -197,6 +202,8 @@ public class PheromoneOperators
                 worstInColonyCBO,
                 worstInColonyNAC,
                 worstInColonyCombined,
+                secondWorstInColonyCombined,
+                thirdWorstInColonyCombined,
                 iteration );
         }
         else
@@ -761,6 +768,7 @@ public class PheromoneOperators
      * @param worst NAC
      * @param worst Path In Colony CBO
      * @param worst Path In Colony Combined
+     * @param second worst Path in Colony Combined
      * @param iteration of the search
      */
     private static void performMMASUpdate( 
@@ -773,6 +781,8 @@ public class PheromoneOperators
         Path worstPathInColonyCBO,
         Path worstPathInColonyNAC,
         Path worstPathInColonyCombined,
+        Path secondWorstPathInColonyCombined,
+        Path thirdWorstPathInColonyCombined,
         int iteration )
     {
         if( AlgorithmParameters.pheromoneUpdate == AlgorithmParameters.PheromoneUpdate.ParetoBased )
@@ -833,6 +843,18 @@ public class PheromoneOperators
                     layAntiPheromoneForPath(
                         AlgorithmParameters.MMAS,
                         worstPathInColonyCombined, 
+                        pheromoneTable );
+                    
+                    // 25 July 2017
+                    layAntiPheromoneForPath(
+                        AlgorithmParameters.MMAS,
+                        secondWorstPathInColonyCombined, 
+                        pheromoneTable );
+                    
+                    // 25 July 2017
+                    layAntiPheromoneForPath(
+                        AlgorithmParameters.MMAS,
+                        thirdWorstPathInColonyCombined, 
                         pheromoneTable );
                 }
                 else

@@ -121,6 +121,11 @@ public class Controller
     private Path worstPathInColonyNAC;
     private Path worstPathInColonyCombined;
     
+    // 25 July 2017
+    private Path secondWorstPathInColonyCombined;
+    private Path thirdWorstPathInColonyCombined;
+    
+    
     // 2 Feb 2016
     private int maxInvalids;
     
@@ -213,7 +218,8 @@ public class Controller
         worstPathInColonyCBO = null;
         worstPathInColonyNAC = null;
         worstPathInColonyCombined = null;
-        
+        secondWorstPathInColonyCombined = null;
+        thirdWorstPathInColonyCombined = null;
         maxInvalids = 0;
         
         // 30 May 2012
@@ -335,7 +341,6 @@ public class Controller
         long before = 0;
         long after = 0;
         long iterationTime = 0;
-        double iterationTimeInSeconds = 0.0;
         
         long runBefore = System.currentTimeMillis( );
 
@@ -382,7 +387,7 @@ public class Controller
             
             generateSolutions( i, alphaTable, freezeList );
             
-            if( AlgorithmParameters.replacementElitism == true ) { elitistInsert( ); }
+            if( AlgorithmParameters.replacementElitism == true ) { elitistReplace( ); }
             
             daemonActions( );
             
@@ -391,8 +396,6 @@ public class Controller
             after = System.currentTimeMillis( );
             assert after >= before : "after is: " + after + ", before is: " + before;
             iterationTime = after - before;
-            iterationTimeInSeconds = iterationTime / 1000.0; // convert to seconds
-            
             this.iterationRunTimes[ i ] = iterationTime;
                 
             // copy fitness values to batch results structure for eventual writing to file 
@@ -427,8 +430,8 @@ public class Controller
         
         long runAfter = System.currentTimeMillis( );
         long runTime = runAfter - runBefore;
-        System.out.print( " run number " + runNumber + " done" );
-        System.out.println(" in " + df.format( runTime / 1000.0 ) + " seconds" );
+        System.out.print( " run number " + runNumber + " done in " );
+        System.out.println( df.format( runTime / 1000.0 ) + " seconds" );
     }
     
     /**
@@ -560,8 +563,6 @@ public class Controller
         // reset metrics to arbitrary values...
         this.bestSoFarCBO = 1.0;
         this.bestSoFarEleganceNAC = 100.0; // arbitrary value
-//        this.bestSoFarEleganceATMR = 100.0; // arbitrary value
-//        this.bestSoFarEleganceModularity = 0.0;
         this.bestSoFarCombined = 100.0; // arbitrary value
                 
         this.worstSoFarCBO = 0.0;
@@ -587,7 +588,7 @@ public class Controller
             DaemonOperators.calculateDesignSolutionPathFitness( path, problemController );
             
             // 5 July 2017
-            calculateBestAndWorst( path, counter );
+            calculateSingleBestAndWorst( path, counter );
             
             // keep running total for iteration average
             runningTotalCBO += path.getCBO( ); 
@@ -643,17 +644,27 @@ public class Controller
         
         this.worstPathInColonyCombined = this.colony.get( NUMBER_OF_ANTS - 1 );
  
-        // double sortedColonyWorstCombinedValue = this.worstPathInColonyCombined.getCombined( );
+        final double sortedColonyWorstCombinedValue = this.worstPathInColonyCombined.getCombined( );
         // System.out.println( "  update worst is: " + this.worstPathInColonyCombined.toString( )+ " " + sortedColonyWorstCombinedValue );
         
         // assert previousWorstCombinedValue == sortedColonyWorstCombinedValue : "error in locating worst Fcomb!";
         // System.out.println( "for debug" );
+        
+        // 25 July 2017
+        this.secondWorstPathInColonyCombined = this.colony.get( NUMBER_OF_ANTS - 2 );
+        final double sortedColonySecondWorstCombined = this.secondWorstPathInColonyCombined.getCombined( );
+        assert sortedColonySecondWorstCombined <= sortedColonyWorstCombinedValue : "error in second worst!";
+        
+        this.thirdWorstPathInColonyCombined = this.colony.get( NUMBER_OF_ANTS - 3 );
+        final double sortedColonyThirdWorstCombined = this.thirdWorstPathInColonyCombined.getCombined( );
+        assert sortedColonyThirdWorstCombined <= sortedColonySecondWorstCombined : "error in third worst!";
+        
     }
     
     // 5 July 2017
-    // Refactor calculation of best and worst solution paths 
+    // Refactor calculation of single best and worst solution paths 
     // in colony into a method.
-    private void calculateBestAndWorst( final Path path, final int counter )
+    private void calculateSingleBestAndWorst( final Path path, final int counter )
     {
         assert path != null;
         assert counter >= 0;
@@ -708,50 +719,6 @@ public class Controller
         }
     }
     
-    // 5 July 2017
-    private void makeSortedColony( )
-    {
-        this.pathArray = new Path[ AlgorithmParameters.NUMBER_OF_ANTS ];
-        
-        int i = 0;
-        for( i = 0; i < pathArray.length; i++ )
-        {
-            pathArray[ i ] = new Path(  new DesignPathRole( ) );
-        }
-        
-        i = 0;
-        
-        this.colony.sort( new PathComparator( ) );
-        
-        for( Path p : this.colony )
-        {
-            // System.out.println( p.getCombined( ) );
-            this.pathArray[ i ].setCombined( p.getCombined( ) );
-            
-            // 20 July 2017 for any future use of CBO or NAC metrics alone
-            this.pathArray[ i ].setCBO( p.getCBO( ) );
-            this.pathArray[ i ].setEleganceNAC( p.getEleganceNAC( ) );
-            i++;
-        }
-        
-//        System.out.println("!!!!!!!! Order of paths before sorting is: ");
-// 
-//        for( i = 0; i < colony.size( ); i++ ) 
-//        {
-//            System.out.println( pathArray[ i ].getCombined( ) );
-//        }
- 
-        // sort into ascending order of Fcomb value
-        Arrays.sort( this.pathArray, new PathComparator( ) );
-        
-//        System.out.println( "Order of paths after sorting by Fcomb is " );
-// 
-//        for( int j = 0; j < colony.size( ); j++ ) 
-//        {
-//            System.out.println( pathArray[ j ].getCombined( ) );
-//        }
-        
-    }
     
    /**
      * adjust the pheromone levels:
@@ -779,6 +746,8 @@ public class Controller
             this.worstPathInColonyCBO,
             this.worstPathInColonyNAC,
             this.worstPathInColonyCombined,
+            this.secondWorstPathInColonyCombined,
+            this.thirdWorstPathInColonyCombined,
             iteration );
         
 //        pheromoneTable.showRawResults( );
@@ -819,11 +788,14 @@ public class Controller
     }
     
     /**
-     * elitist insert of path(s) into the colony
+     * elitist replacement of path(s) into the colony
      */
-    private void elitistInsert( )
+    private void elitistReplace( )
     {
         final int size = colony.size( );
+        
+        // for debug
+        final int eliteSize = this.eliteArchive.size( );
         
         while( this.eliteArchive.empty( ) == false ) // handle first iteration where eilte archive is empty
         {
@@ -836,8 +808,7 @@ public class Controller
     }
     
     /**
-     * update the elite archive to hold to fittest path
-     * in the colony 
+     * update the elite archive to hold to fittest path(s)in the colony 
      */
     private void updateEliteArchive(  )
     {
@@ -901,10 +872,10 @@ public class Controller
         
         // 10 April 2013
         // reset the domination count for the next iteration
-        for( Path p : this.eliteArchive )
-        {
-            p.resetDominationCount( );
-        }
+//        for( Path p : this.eliteArchive )
+//        {
+//            p.resetDominationCount( );
+//        }
         
         // 19 September 2012 - non-dom approach doesn't work
 //        Path p = ParetoOperators.selectPathWithLeastWeightedDominationCount(
