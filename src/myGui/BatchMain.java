@@ -53,16 +53,17 @@ public class BatchMain
         
         AlgorithmParameters.fitness = AlgorithmParameters.COMBINED;  // set up cost to Fcomb
             
-        for( int problem = Parameters.RANDOMISED; problem <= Parameters.RANDOMISED; problem++ )
+        for( int problem = Parameters.CBS; problem <= Parameters.CBS; problem++ )
         {
             Parameters.problemNumber = problem;
             generateProblem( problem );
             
-            for( int x = 8; x < 9; x++ )
+            for( int ap = 0; ap < 0; ap++ )
             {
-                AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = x;
+                AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = ap;
                 System.out.println( "******* problem is: " + problem + 
-                    ", fitness is: " + AlgorithmParameters.fitness + 
+                    ", fitn"
+                            + "ess is: " + AlgorithmParameters.fitness + 
                     // ", MMAS subtractive AP is: " + AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE +
                     ", AP Threshold is: " + AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " ******"  );
                 doAntSearch( );
@@ -70,6 +71,15 @@ public class BatchMain
             }   // end for threshold values 0..9
 
 //            for( int y = 10; y <= 100; y += 10 )
+//            {
+//                AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = y;
+//                System.out.println( "******* problem is: " + problem + 
+//                    ", fitness is: " + AlgorithmParameters.fitness +
+//                    ", MMAS subtractive AP is: " + AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE + 
+//                    ", AP Threshold is: " + AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " ******"  );
+//                doAntSearch( problem );
+//
+//            }   // end for threshold values 10..100//            for( int y = 10; y <= 100; y += 10 )
 //            {
 //                AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = y;
 //                System.out.println( "******* problem is: " + problem + 

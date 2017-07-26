@@ -35,6 +35,7 @@ public class AlgorithmParameters
     
     
     // used in PheromoneOperators to calculate delta
+    // and by the elitist replacement archive
     public static boolean objectiveCBO = true;
     public static boolean objectiveNAC = true;
     public static boolean objectiveATMR = false;
