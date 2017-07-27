@@ -373,8 +373,8 @@ public class Controller
         // list of classes that user elects to "freeze"
         List< CLSClass > freezeList = new ArrayList< >( ); 
         
-        // create a new archive for the new run
-        this.eliteArchive = new Stack< >( );
+        // clear out the archive for the new run
+        this.eliteArchive.clear( );
         
         // perform ACO search until iterations are terminated
         for( int i = 0; i < NUMBER_OF_ITERATIONS; i++  )
