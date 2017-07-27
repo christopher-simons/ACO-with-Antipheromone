@@ -137,6 +137,13 @@ public class AlgorithmParameters
     public static boolean MMAS_SUBTRACTIVE_ANTIPHEROMONE = false;
     public static double MMAS_RHO_ANTIPHEROMONE_HALF = 0.5;
     
+    // 27 July 2017 
+    public static final int ANTIPHEROMONE_STRENGTH_SINGLE = 1;
+    public static final int ANTIPHEROMONE_STRENGTH_DOUBLE = 2;
+    public static final int ANTIPHEROMONE_STRENGTH_TRIPLE = 3;
+    public static int antipheromoneStrength = ANTIPHEROMONE_STRENGTH_SINGLE;
+    
+    
     
 }   // end class
 

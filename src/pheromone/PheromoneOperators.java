@@ -769,6 +769,7 @@ public class PheromoneOperators
      * @param worst Path In Colony CBO
      * @param worst Path In Colony Combined
      * @param second worst Path in Colony Combined
+     * @param third worst Path in Colony Combined
      * @param iteration of the search
      */
     private static void performMMASUpdate( 
@@ -788,8 +789,10 @@ public class PheromoneOperators
         if( AlgorithmParameters.pheromoneUpdate == AlgorithmParameters.PheromoneUpdate.ParetoBased )
         {
             performParetoDominationBasedUpdate( colony, pheromoneTable, AlgorithmParameters.MU, weights );
+            return;
         }
-        else if( AlgorithmParameters.pheromoneUpdate == AlgorithmParameters.PheromoneUpdate.SO )
+        
+        if( AlgorithmParameters.pheromoneUpdate == AlgorithmParameters.PheromoneUpdate.SO )
         {
             // 29 November 2015 Update
             if( AlgorithmParameters.fitness == AlgorithmParameters.CBO )    
@@ -825,37 +828,34 @@ public class PheromoneOperators
             {
                 if( AlgorithmParameters.fitness == AlgorithmParameters.CBO )    
                 {
-                    layAntiPheromoneForPath( 
-                        AlgorithmParameters.MMAS,
-                        worstPathInColonyCBO, 
-                        pheromoneTable );
+                    layAntiPheromoneForPath( AlgorithmParameters.MMAS, worstPathInColonyCBO, pheromoneTable );
                 }
                 else if( AlgorithmParameters.fitness == AlgorithmParameters.NAC )
                 {
-                    layAntiPheromoneForPath(
-                        AlgorithmParameters.MMAS,
-                        worstPathInColonyNAC, 
-                        pheromoneTable );
+                    layAntiPheromoneForPath( AlgorithmParameters.MMAS, worstPathInColonyNAC, pheromoneTable );
                 }
-                
                 else if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED )
                 {
-                    layAntiPheromoneForPath(
-                        AlgorithmParameters.MMAS,
-                        worstPathInColonyCombined, 
-                        pheromoneTable );
+                    assert AlgorithmParameters.antipheromoneStrength <= AlgorithmParameters.ANTIPHEROMONE_STRENGTH_TRIPLE;
+                    assert AlgorithmParameters.antipheromoneStrength >= AlgorithmParameters.ANTIPHEROMONE_STRENGTH_SINGLE;
                     
                     // 25 July 2017
-                    layAntiPheromoneForPath(
-                        AlgorithmParameters.MMAS,
-                        secondWorstPathInColonyCombined, 
-                        pheromoneTable );
-                    
-                    // 25 July 2017
-                    layAntiPheromoneForPath(
-                        AlgorithmParameters.MMAS,
-                        thirdWorstPathInColonyCombined, 
-                        pheromoneTable );
+                    switch( AlgorithmParameters.antipheromoneStrength )
+                    {
+                        case AlgorithmParameters.ANTIPHEROMONE_STRENGTH_TRIPLE:
+                            layAntiPheromoneForPath(AlgorithmParameters.MMAS,thirdWorstPathInColonyCombined, pheromoneTable );
+                            
+                        case AlgorithmParameters.ANTIPHEROMONE_STRENGTH_DOUBLE:
+                            layAntiPheromoneForPath( AlgorithmParameters.MMAS, secondWorstPathInColonyCombined, pheromoneTable );
+                        
+                        case AlgorithmParameters.ANTIPHEROMONE_STRENGTH_SINGLE:
+                            layAntiPheromoneForPath( AlgorithmParameters.MMAS, worstPathInColonyCombined, pheromoneTable );
+                            break;
+                            
+                        default:
+                            assert false : "impossible antipheromone strength!";
+                            break;
+                    }
                 }
                 else
                 {

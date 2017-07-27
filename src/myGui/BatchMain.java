@@ -52,18 +52,18 @@ public class BatchMain
         System.out.println( "selected path for output files is: " + Parameters.outputFilePath );
         
         AlgorithmParameters.fitness = AlgorithmParameters.COMBINED;  // set up cost to Fcomb
+        AlgorithmParameters.antipheromoneStrength = AlgorithmParameters.ANTIPHEROMONE_STRENGTH_TRIPLE;
             
         for( int problem = Parameters.CBS; problem <= Parameters.CBS; problem++ )
         {
             Parameters.problemNumber = problem;
             generateProblem( problem );
             
-            for( int ap = 0; ap < 0; ap++ )
+            for( int ap = 8; ap < 9; ap++ )
             {
                 AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = ap;
                 System.out.println( "******* problem is: " + problem + 
-                    ", fitn"
-                            + "ess is: " + AlgorithmParameters.fitness + 
+                    ", fitness is: " + AlgorithmParameters.fitness + 
                     // ", MMAS subtractive AP is: " + AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE +
                     ", AP Threshold is: " + AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " ******"  );
                 doAntSearch( );
