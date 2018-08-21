@@ -4,7 +4,7 @@
  * Renamed 30 August 2012
  * Substantially reworked for antipheromone experiments Nov / Dec 2015
  * Added to a GitHub Repository 25 July 2016
- * 
+ * Substantially reworked for further antipheromone experiments June / July 2018 
  */
 
 package engine;
@@ -17,78 +17,56 @@ package engine;
 import config.AlgorithmParameters;
 import config.Parameters;
 import daemonActions.DaemonOperators;
-// import heuristics.HeuristicAnt2;
 import heuristics.HeuristicInformation;
 import java.text.DecimalFormat;
 import java.util.*;
-
-// import javax.swing.JOptionPane;
-// import learning.Coefficients; commented out 6 June 2017
-// import learning.IterationInformation; commented out 6 June 2017
-// import learning.RegressionAgent; commented out 6 June 2017
-// import myGui.VisualiseEvaluateDialog; commented out 6 June 2017
-import myUtils.Utility;
-import myUtils.Weights;
 import myUtils.PathComparator;
-// import net.sourceforge.openforecast.Observation; commented out 6 June 2017
-import pareto.ParetoOperators;
-import pheromone.AlphaTable;
+import pheromone.AlphaMatrix;
+import pheromone.BestPathsMatrix;
+import pheromone.PathInterferenceMatrix;
 import pheromone.PheromoneOperators;
-import pheromone.PheromoneTable;
+import pheromone.PheromoneMatrix;
+import pheromone.WorstPathsMatrix;
 import problem.CLSAction;
 import problem.CLSDatum;
 import problem.ProblemController;
 import reporting.BatchResults;
-// import reporting.InteractiveResults; commented out 6 June 2017
-import reporting.MultiObjectiveResults;
 import softwareDesign.CLSClass;
-import softwareDesign.EleganceDesign;
 
 
 public class Controller
 {
-    /** number of iterations of search */
-    private final int NUMBER_OF_ITERATIONS;
-        
-    /** number of ants in colony */
-    private final int NUMBER_OF_ANTS;
-        
-    /** maximum number of attempts to produce a valid solution */
-    // 22 Jan 2013 double number when using coupling heuristics only
-    private final int MAXIMUM_ATTEMPTS = 100;
-
-    /** list (set) of attributes of the software design */
-    private List< Attribute > attributeList;
+    /** list of attributes in the software design */
+    private final List< Attribute > attributeList;
     
-    /** list (set) of methods in the software design */
-    private List< Method > methodList;
+    /** list of methods in the software design */
+    private final List< Method > methodList;
 
-    /** list of all the attributes and methods in the colony */
-    private List< Node > amList; 
+    /** list of all the attributes and methods in the problem */
+    private final List< Node > amList; 
     
     /** number of classes in software design */
     private static int numberOfClasses;
 
     /** the colony, which contains all the solution paths */
-    private List< Path > colony;
+    private final List< Path > colony;
     
     /** for sorting of the colony based on Fcomb 19 July 2017 */
     Path pathArray[ ];
     
     /** the table containing all the pheromone values */
-    private PheromoneTable pheromoneTable;
+    private PheromoneMatrix pheromoneTable;
     
     /** the elite archive */
     private Stack< Path > eliteArchive;
     
-    /** the problem controller, for use table */
+    /** reference to the problem controller, for use table */
     private ProblemController problemController;
     
     /** best so far values */
     private double bestSoFarCBO;
     private double bestSoFarEleganceNAC;
     private double bestSoFarEleganceATMR;
-    private double bestSoFarEleganceModularity;
     private double bestSoFarCombined;
 
     /** best so far indices into colony */
@@ -115,26 +93,21 @@ public class Controller
     private Path bestPathInColonyNAC;
     private Path bestPathInColonyATMR;
     private Path bestPathInColonyCombined;
+    // 26 June 2018
+    private Path secondBestPathInColonyCombined;
+    private Path thirdBestPathInColonyCombined;
+    
     
     // 07 Jan 2016
     private Path worstPathInColonyCBO;
     private Path worstPathInColonyNAC;
     private Path worstPathInColonyCombined;
-    
     // 25 July 2017
     private Path secondWorstPathInColonyCombined;
     private Path thirdWorstPathInColonyCombined;
     
-    
     // 2 Feb 2016
     private int maxInvalids;
-    
-    
-    /** 
-     * counter for best in colony to present to user
-     * fitness function counter, or ffCounter
-     */
-    private static int ffCounter = 0;
     
     // 30 May 2012
     private int[ ] numberOfRetries;
@@ -158,7 +131,6 @@ public class Controller
     /**
      * constructor
      * @param problemController
-     * @param mode
      */
     public Controller( ProblemController problemController )
     {
@@ -168,10 +140,6 @@ public class Controller
         amList = new ArrayList<  >( );
         attributeList = new ArrayList<  >( );
         methodList = new ArrayList<  >( );
-        
-        // update local parameter information 
-        NUMBER_OF_ITERATIONS = AlgorithmParameters.NUMBER_OF_ITERATIONS;
-        NUMBER_OF_ANTS = AlgorithmParameters.NUMBER_OF_ANTS;
         
         initialiseLists( problemController );
         // for testing only
@@ -186,7 +154,7 @@ public class Controller
         colony = new ArrayList< >( );
         
         // 17 July 2017
-        pathArray = new Path[ NUMBER_OF_ANTS ];
+        pathArray = new Path[ AlgorithmParameters.NUMBER_OF_ANTS ];
         
         eliteArchive = new Stack< >( );
         
@@ -194,7 +162,6 @@ public class Controller
         bestSoFarCBO = 100.0;
         bestSoFarEleganceNAC = 100.0;
         bestSoFarEleganceATMR = 100.0;
-        bestSoFarEleganceModularity = 0.0;
         bestSoFarCombined = 100.0;
         bestCBOIndex = 0;
         bestNACIndex = 0;
@@ -206,6 +173,8 @@ public class Controller
         bestPathInColonyNAC = null;
         bestPathInColonyATMR = null;
         bestPathInColonyCombined = null;
+        secondBestPathInColonyCombined = null;
+        thirdBestPathInColonyCombined = null;
         
         worstSoFarCBO = 100.0;
         worstSoFarNAC = 100.0;
@@ -223,10 +192,10 @@ public class Controller
         maxInvalids = 0;
         
         // 30 May 2012
-        numberOfRetries = new int[ NUMBER_OF_ITERATIONS ];
-        averageAttempts = new double[ NUMBER_OF_ITERATIONS ];
+        numberOfRetries = new int[ AlgorithmParameters.NUMBER_OF_ITERATIONS ];
+        averageAttempts = new double[ AlgorithmParameters.NUMBER_OF_ITERATIONS ];
         
-        for( int i = 0; i < NUMBER_OF_ITERATIONS; i++ )
+        for( int i = 0; i < AlgorithmParameters.NUMBER_OF_ITERATIONS; i++ )
         {
             numberOfRetries[ i ] = 0;
             averageAttempts[ i ] = 0.0;
@@ -235,10 +204,10 @@ public class Controller
         interval = 0;
              
         // set up results for batch mode
-        batchResults = new BatchResults( NUMBER_OF_ITERATIONS, Parameters.NUMBER_OF_RUNS );
+        batchResults = new BatchResults( AlgorithmParameters.NUMBER_OF_ITERATIONS, Parameters.NUMBER_OF_RUNS );
 
          /** in batch mode, run time for each iteration */
-        iterationRunTimes = new long[ NUMBER_OF_ITERATIONS ];
+        iterationRunTimes = new long[ AlgorithmParameters.NUMBER_OF_ITERATIONS ];
 
         /** in batch mode, average run time for each run */
         averageRunTimes = new long[ Parameters.NUMBER_OF_RUNS ];
@@ -247,7 +216,7 @@ public class Controller
     }
     
     /**
-     * initialize the lists of attributes, methods, vertices
+     * initialise the lists of attributes, methods, vertices
      * @param problemController 
      */
     private void initialiseLists( ProblemController problemController )
@@ -345,53 +314,28 @@ public class Controller
         long runBefore = System.currentTimeMillis( );
 
         // create a new Pheromone table for each run
-        pheromoneTable = new PheromoneTable( amList, numberOfClasses, problemController );
+        pheromoneTable = new PheromoneMatrix( amList, numberOfClasses, problemController );
 //        pheromoneTable.show( );
-        
-        // all weights set to zero initially
-        Weights weights = new Weights( );
-
-        // 8 December 2015
-        // using single-objective in batch mode, so set up weights once
-        if( AlgorithmParameters.fitness == AlgorithmParameters.CBO )
-        {
-            weights.weightCBO = 1.0;
-        }    
-        else if( AlgorithmParameters.fitness == AlgorithmParameters.NAC )
-        {
-            weights.weightNAC = 1.0;
-        }    
-        else if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED )
-        {
-            weights.weightCOMBINED = 1.0;
-        }    
-        else
-        {
-            assert false: "impossible fitness to weights!";
-        }
-        
-        // list of classes that user elects to "freeze"
-        List< CLSClass > freezeList = new ArrayList< >( ); 
-        
+    
         // clear out the archive for the new run
         this.eliteArchive.clear( );
         
         // perform ACO search until iterations are terminated
-        for( int i = 0; i < NUMBER_OF_ITERATIONS; i++  )
+        for( int i = 0; i < AlgorithmParameters.NUMBER_OF_ITERATIONS; i++  )
         {
             before = System.currentTimeMillis( );
             
-            AlphaTable alphaTable = new AlphaTable( this.pheromoneTable, AlgorithmParameters.ALPHA );
+            AlphaMatrix alphaTable = new AlphaMatrix( this.pheromoneTable, AlgorithmParameters.ALPHA );
 
-            // now begin the classic ant colony optimisation loop
+            // the classic ant colony optimisation loop
             
-            generateSolutions( i, alphaTable, freezeList );
+            generateSolutions( i, alphaTable );
             
             if( AlgorithmParameters.replacementElitism == true ) { elitistReplace( ); }
             
             daemonActions( );
             
-            pheromoneUpdate( weights, i );
+            pheromoneUpdate( i );
             
             after = System.currentTimeMillis( );
             assert after >= before : "after is: " + after + ", before is: " + before;
@@ -424,73 +368,46 @@ public class Controller
             
         // 2 Feb 2016
         batchResults.maxNumberOfInvalids[ runNumber ] = this.maxInvalids;
-       
+        
+        // 8 August 2018 
+        investigateInterference( runNumber );
+        
         // at the end, show the pheromone table
         //this.pheromoneTable.show( );
         
         long runAfter = System.currentTimeMillis( );
         long runTime = runAfter - runBefore;
-        System.out.print( " run number " + runNumber + " done in " );
+        
+        
+        System.out.print( " run number " + ( runNumber + 1 ) + " done in " );
         System.out.println( df.format( runTime / 1000.0 ) + " seconds" );
     }
     
-    /**
-     * for use in batch mode only
-     * after the iterations are complete, use the pheromone
-     * table to generate a set of ants (solutions).
-     * Then construct a multi-objective results object
-     * and use it to write to file. 
-     * @param freezeList 
-     */
-    private void doMultiObjectiveValues( List< CLSClass > freezeList )
-    {
-        
-        AlphaTable at = new AlphaTable( this.pheromoneTable, AlgorithmParameters.ALPHA );
-        generateSolutions( 0, at, freezeList );
-        // get the use table in readiness
-        SortedMap< String, List< CLSDatum > > useTable =
-            problemController.getUseTable( );    
-        // for each path in the colony
-        Iterator< Path > it = colony.iterator( ); 
-        // get the path, and construct a software design
-        while( it.hasNext( ) )
-        {
-            Path path = it.next( );
-            // calculate coupling, NAC elegance, ATMR elegance
-            DaemonOperators.calculateDesignSolutionPathFitness( 
-                path, useTable );
-        }
-        MultiObjectiveResults moResults = new MultiObjectiveResults( this.colony );
-        moResults.transfer( this.colony );
-        moResults.writeToFile( ); 
-        clearEnvironment( );
-    }
+    
     
     /**
      * construction phase
      * @param iteration counter
      * @param alpha table
-     * @param list of classes that user elects to freeze
      */
     private void generateSolutions( 
         int iterationCounter, 
-        AlphaTable alphaTable, 
-        List< CLSClass > freezeList )
+        AlphaMatrix alphaTable )
     { 
         assert alphaTable != null;
-        assert freezeList != null;
         assert problemController != null;
         
         int retries = 0;
         int attemptTotal = 0;
                 
-        for( int i = 0; i < NUMBER_OF_ANTS; i++ )
+        for( int i = 0; i < AlgorithmParameters.NUMBER_OF_ANTS; i++ )
         {
             Ant ant = new Ant( 
-                    amList, 
-                    numberOfClasses, 
+                    this.amList,
+                    this.attributeList,
+                    this.methodList,
+                    this.numberOfClasses, 
                     alphaTable, 
-                    freezeList, 
                     AlgorithmParameters.constraintHandling );  
 
             assert ant != null; 
@@ -505,14 +422,13 @@ public class Controller
             }
             else // we are handling constraints, so try repeatedly until we find a valid path
             {
-                ant.generateSolution( ); 
-                // ant.generateValidPath( ); 8 June 2017
+                assert( AlgorithmParameters.constraintHandling == true );
                 
- 
+                ant.generateSolution( ); 
+                
                 while( ant.isValidPath( ) == false )
                 {
                     ant.generateSolution( ); 
-                    // ant.generateValidPath( ); 8 June 2017
                     attempts++;
                 }
                 
@@ -522,15 +438,11 @@ public class Controller
                 {
                     retries++;
                 }
-                colony.add( ant.getPath( ) );
                 
-//                if( attempts > 100 )
-//                {
-//                    System.err.println( "number of attempts is: " + attempts );
-//                }
+                colony.add( ant.getPath( ) );
             }
-            attemptTotal += attempts;
             
+            attemptTotal += attempts;
         }
         
         numberOfRetries[ iterationCounter ] = retries;
@@ -539,11 +451,6 @@ public class Controller
         {    
             averageAttempts[ iterationCounter ] = (double) attemptTotal / (double) retries;
         }
-        
-//        System.out.println( "average number of attempts is: " + averageAttempts[ iterationCounter ] );
-//        System.out.println( "number of retries is: " + retries );
-//        System.out.println( "" );
-        
     }
     
     /**
@@ -553,7 +460,6 @@ public class Controller
      * In this ACO search, the daemon actions transform all
      * solution paths into software designs in order to
      * calculate fitness (and later, visualization for interaction). 
-     * @param multi-objective weights
      */
     private void daemonActions( ) 
     {
@@ -634,31 +540,8 @@ public class Controller
         this.worstPathInColonyCBO = this.colony.get( this.worstCBOIndex );
         this.worstPathInColonyNAC = this.colony.get( this.worstNACIndex );
         
-        // 24 July 2017 find worst in colony (Fcomb) by sorting the colony according to Fcomb
-        
-        // this.worstPathInColonyCombined = this.colony.get( this.worstCombinedIndex ); OLD!!
-        // double previousWorstCombinedValue = this.worstPathInColonyCombined.getCombined( );
-        // System.out.println( "previous worst is: " + this.worstPathInColonyCombined.toString( ) + " " + previousWorstCombinedValue );
-        
-        this.colony.sort( new PathComparator( ) );
-        
-        this.worstPathInColonyCombined = this.colony.get( NUMBER_OF_ANTS - 1 );
- 
-        final double sortedColonyWorstCombinedValue = this.worstPathInColonyCombined.getCombined( );
-        // System.out.println( "  update worst is: " + this.worstPathInColonyCombined.toString( )+ " " + sortedColonyWorstCombinedValue );
-        
-        // assert previousWorstCombinedValue == sortedColonyWorstCombinedValue : "error in locating worst Fcomb!";
-        // System.out.println( "for debug" );
-        
-        // 25 July 2017
-        this.secondWorstPathInColonyCombined = this.colony.get( NUMBER_OF_ANTS - 2 );
-        final double sortedColonySecondWorstCombined = this.secondWorstPathInColonyCombined.getCombined( );
-        assert sortedColonySecondWorstCombined <= sortedColonyWorstCombinedValue : "error in second worst!";
-        
-        this.thirdWorstPathInColonyCombined = this.colony.get( NUMBER_OF_ANTS - 3 );
-        final double sortedColonyThirdWorstCombined = this.thirdWorstPathInColonyCombined.getCombined( );
-        assert sortedColonyThirdWorstCombined <= sortedColonySecondWorstCombined : "error in third worst!";
-        
+        // 26 June 2018
+        calculateOtherBestAndWorst( ); 
     }
     
     // 5 July 2017
@@ -668,7 +551,7 @@ public class Controller
     {
         assert path != null;
         assert counter >= 0;
-        assert counter < NUMBER_OF_ANTS;
+        assert counter < AlgorithmParameters.NUMBER_OF_ANTS;
         
         // CBO related fitness first
         double externalCoupling = path.getCBO( );
@@ -719,6 +602,48 @@ public class Controller
         }
     }
     
+    /**
+     * Calculate other best and worst paths in the colony 
+     * by sorting the paths in the colony first.
+     * Refactored 26 June 2018
+     */
+    private void calculateOtherBestAndWorst( )
+    {
+        // fistly sort the colony according to Fcomb
+        this.colony.sort( new PathComparator( ) );
+        
+        // find the second and third best paths
+        // (best path already calulated previously). 
+        final double bestCombined = this.colony.get( 0 ).getCombined( );
+         
+        this.secondBestPathInColonyCombined = this.colony.get( 1 );
+        final double secondBestCombined = this.secondBestPathInColonyCombined.getCombined( );
+        assert bestCombined <= secondBestCombined : 
+                "error in second best!" + 
+                " best is: " + bestCombined +
+                " and second best is: " + secondBestCombined;
+        
+        this.thirdBestPathInColonyCombined = this.colony.get( 2 );
+        final double thirdBestCombined = this.thirdBestPathInColonyCombined.getCombined( );
+        assert secondBestCombined <= thirdBestCombined : 
+                "error in third best!" + 
+                " second best is: " + secondBestCombined + 
+                " and third best is: " + thirdBestCombined;
+        
+        this.worstPathInColonyCombined = this.colony.get( AlgorithmParameters.NUMBER_OF_ANTS - 1 );
+ 
+        final double sortedColonyWorstCombinedValue = this.worstPathInColonyCombined.getCombined( );
+        // System.out.println( "  update worst is: " + this.worstPathInColonyCombined.toString( )+ " " + sortedColonyWorstCombinedValue );
+        
+        // 25 July 2017
+        this.secondWorstPathInColonyCombined = this.colony.get( AlgorithmParameters.NUMBER_OF_ANTS - 2 );
+        final double sortedColonySecondWorstCombined = this.secondWorstPathInColonyCombined.getCombined( );
+        assert sortedColonySecondWorstCombined <= sortedColonyWorstCombinedValue : "error in second worst!";
+        
+        this.thirdWorstPathInColonyCombined = this.colony.get( AlgorithmParameters.NUMBER_OF_ANTS - 3 );
+        final double sortedColonyThirdWorstCombined = this.thirdWorstPathInColonyCombined.getCombined( );
+        assert sortedColonyThirdWorstCombined <= sortedColonySecondWorstCombined : "error in third worst!";
+    }    
     
    /**
      * adjust the pheromone levels:
@@ -726,9 +651,8 @@ public class Controller
      * 2) update Trail levels based on ant construction
      * @param weights for multi-objective pheromone update
      */ 
-    private void pheromoneUpdate( Weights weights, int iteration )
+    private void pheromoneUpdate( int iteration )
     { 
-        assert weights != null;
         assert iteration >= 0;
         
         PheromoneOperators.evaporate( pheromoneTable );
@@ -738,11 +662,12 @@ public class Controller
         PheromoneOperators.update(
             this.pheromoneTable, 
             this.colony, 
-            weights, 
             this.bestPathInColonyCBO,
             this.bestPathInColonyNAC,
             this.bestPathInColonyATMR,
             this.bestPathInColonyCombined,
+            this.secondBestPathInColonyCombined,
+            this.thirdBestPathInColonyCombined,
             this.worstPathInColonyCBO,
             this.worstPathInColonyNAC,
             this.worstPathInColonyCombined,
@@ -753,40 +678,6 @@ public class Controller
 //        pheromoneTable.showRawResults( );
     }
 
-    
-    /**
-     * Does the designer interact at this iteration?
-     * Apply the notion of the fitness proportionate
-     * interactive interval, based on best CBO
-     * @return true if interaction is appropriate, false otherwise
-     */
-    private boolean checkForInteraction() 
-    {
-        boolean result = false;
-        final double squareValue = this.bestSoFarCBO * this.bestSoFarCBO;
-        final double value = 
-            squareValue * AlgorithmParameters.INTERACTIVE_INTERVAL_CONSTANT;
-        long rounded = Math.round(value);
-        
-        // ensure the rounded number is at least 1
-        if (rounded < 1) 
-        {
-            rounded = 1;
-        }
-        
-        if (interval < rounded) 
-        {
-            interval++;
-            System.out.println( "interval is: " + interval );
-        } 
-        else 
-        {
-            interval = 0;
-            result = true;
-        }
-        return result;
-    }
-    
     /**
      * elitist replacement of path(s) into the colony
      */
@@ -795,7 +686,7 @@ public class Controller
         final int size = colony.size( );
         
         // for debug
-        final int eliteSize = this.eliteArchive.size( );
+        // final int eliteSize = this.eliteArchive.size( );
         
         while( this.eliteArchive.empty( ) == false ) // handle first iteration where eilte archive is empty
         {
@@ -869,41 +760,6 @@ public class Controller
 //        }
         
         assert this.eliteArchive.size( ) <= 3;
-        
-        // 10 April 2013
-        // reset the domination count for the next iteration
-//        for( Path p : this.eliteArchive )
-//        {
-//            p.resetDominationCount( );
-//        }
-        
-        // 19 September 2012 - non-dom approach doesn't work
-//        Path p = ParetoOperators.selectPathWithLeastWeightedDominationCount(
-//            this.colony, weights );
-//        this.eliteArchive.add( p );
-//        assert this.eliteArchive.empty( ) == false;
-        
-        // 20 Sept 2012 - this doesn't work either
-//        Path p = null;
-//        List< Path > nonDoms = ParetoOperators.getNomDoms( colony );
-//
-//        if( nonDoms.isEmpty( ) )    // more likely? 
-//        {        
-//            p = ParetoOperators.selectPathWithLeastWeightedDominationCount( 
-//            colony, weights );
-//        }
-//        else    // less likely??
-//        {
-//            final int numberOfNonDoms = nonDoms.size( );
-//            assert numberOfNonDoms > 0;
-//            final int randomSelection = Utility.getRandomInRange( 1, numberOfNonDoms );
-//            assert randomSelection <= numberOfNonDoms;
-//            p = nonDoms.get( randomSelection - 1 );
-//        }
-//        
-//        this.eliteArchive.add( p );
-//        assert this.eliteArchive.empty( ) == false;
-        
     }
     
     
@@ -916,274 +772,9 @@ public class Controller
         assert colony.size( ) > 0; // assert that paths exist
         colony.clear( );
     }
-
-    
-    /**
-     * perform interaction
-     * @param the three weights
-     * @param list of classes user has elected to "freeze"
-     * @param iteration
-     * @param interaction counter 
-     * @param information about this iteration
-     * @param archive 
-     * @return user action from Dialog
-     */
-    private int performInteraction( 
-        Weights weights, 
-        List< CLSClass > freezeList,
-        int iteration,
-        int interactionCounter,
-  //      IterationInformation information,
-        List< EleganceDesign > archive )
-        // 6 Nov 2015 ServletController servletController)
-    {
-        assert weights != null;
-        assert freezeList != null;
-   //     assert information != null;
-        assert archive != null;
-        
-        // select a solution path for visualisation
-        Path path = null;
-//        List< Path > nonDoms = ParetoOperators.getNomDoms( this.colony );
-//
-//        if( nonDoms.isEmpty( ) == false )    // not so likely? 
-//        {        
-//            final int numberOfNonDoms = nonDoms.size( );
-//            assert numberOfNonDoms > 0;
-//            final int randomSelection = Utility.getRandomInRange( 1, numberOfNonDoms );
-//            assert randomSelection <= numberOfNonDoms;
-//            path = nonDoms.get( randomSelection - 1 );
-//        }
-//        else    // more likely??
-//        {
-//            path = ParetoOperators.selectPathWithLeastWeightedDominationCount( 
-//                colony, weights );
-//            
-//            final int randomSelection = Utility.getRandomInRange( 1, 4 );
-//            
-//            switch( randomSelection )
-//            {
-//                case 1: { path = this.colony.get( this.bestCBOIndex ); break; } 
-//                
-//                case 2: { path = this.colony.get( this.bestNACIndex ); break; }
-//                
-//                case 3: { path = this.colony.get( this.bestATMRIndex ); break; }
-//                
-//                case 4: { path = 
-//                            ParetoOperators.selectPathWithLeastWeightedDominationCount( 
-//                                colony, weights ); 
-//                          break; }
-//                
-//                default: { assert false : "impossible random selection!"; }
-//            }
-//        }
-        
-//        final int numberOfFitnessFunctionsToView = 2;
-//        final int selection = ffCounter % numberOfFitnessFunctionsToView;
-//        ffCounter++;
-//        
-//        switch( selection )
-//        {
-//            case 0: { path = this.colony.get( this.bestCBOIndex ); break; } 
-//
-//            case 1: { path = this.colony.get( this.bestNACIndex ); break; }
-//
-//            case 2: { path = this.colony.get( this.bestATMRIndex ); break; }
-//
-//            default: { assert false : "impossible selection!"; }
-//        }
-//        
-        boolean done = false;
-        int domCount = 0;
-
-        while( ! done )
-        {
-            List< Path > list = ParetoOperators.getPathsWithDomCount( colony, domCount );
-            if( list.isEmpty( ) )
-            {
-                domCount++;
-            }
-            else
-            {
-                int numberOfPaths = list.size( );
-                assert numberOfPaths > 0;
-                final int randomSelection = Utility.getRandomInRange( 1, numberOfPaths );
-                assert randomSelection <= numberOfPaths;
-                path = list.get( randomSelection - 1 );
-                done = true;
-            }
-        }
-        assert path != null;
-        
-        /* 6 Nov 2015
-        servletController.setPath(path);
-        servletController.setDesignName("Fred");
-        servletController.setUseTable(this.problemController.getUseTable());
-        servletController.setFreezeList(freezeList);
-        servletController.setIteration(iteration);
-        servletController.setInteractionCounter(interactionCounter);
-        servletController.setInformation(information);
-        servletController.setArchive(archive);
-        */
-       
-        
-//        VisualiseEvaluateDialog ved = new VisualiseEvaluateDialog(
-//                path,
-//                "Fred",
-//                this.problemController.getUseTable( ),
-//                freezeList, 
-//                iteration, 
-//                interactionCounter,
-//                information,
-//                archive );
-        
-//        ved.setVisible( true );
-
-//        int userAction = ved.getUserAction( );
-        
-//        int designerEvaluation = ved.getDesignerEvaluation( );
-//        information.designerEvaluation = designerEvaluation;
-        
-        int userAction = 1;
-//        
-//        if( userAction == JOptionPane.OK_OPTION )   // user has clicked "next"
-//        {
-//            Coefficients coefficients = new Coefficients( );
-//
-//            doRegression( path, coefficients, information );
-//            
-//            calculateWeights( coefficients, weights );
-//        }
-        
-        // 9 April 2013 - for SSBSE paper
-        // reset the CBO weight to 1.0
-        weights.weightCBO = 1.0;
-        weights.weightATMR = 0.0;
-        weights.weightNAC = 0.0;
-        
-        return userAction;
-    }
-    
-    
-    /**
-     * do the multiple linear regression to update the coefficients
-     * using the OpenForecast OpenSource code wrapped in RegressionAgent
-     * @param path
-     * @param designer evaluation
-     * @param coefficients
-     * @param iteration information
-     */
-//    private void doRegression( 
-//        Path path, 
-//        Coefficients coefficients,
-//        IterationInformation information )
-//    {
-//        assert path != null;
-//        assert information != null;
-//        assert information.designerEvaluation >= 0;
-//        assert information.designerEvaluation <= 100;
-//        assert coefficients != null;
-//        
-//        // construct an observation with the dependent variable
-//        Observation observation = new Observation( information.designerEvaluation ); 
-//
-//        // now set up the independent variables i.e. CBO, NAC and ATMR
-//        observation.setIndependentValue( 
-//            RegressionAgent.independentVariables[ 0 ], path.getCBO( ) );
-//        observation.setIndependentValue( 
-//            RegressionAgent.independentVariables[ 1 ], path.getEleganceNAC( ) );
-//        observation.setIndependentValue( 
-//            RegressionAgent.independentVariables[ 2 ], path.getEleganceATMR( ) );
-//
-//        RegressionAgent.addObservation( observation );
-//        RegressionAgent.init( );
-//
-//        System.out.println( "intercept is: " + RegressionAgent.getIntercept( ) );
-//        coefficients.cCBO = RegressionAgent.getCBOCoefficient( );
-//        System.out.println( "cCBO is: " + coefficients.cCBO );
-//        coefficients.cNAC = RegressionAgent.getNACCoefficient( );
-//        System.out.println( "cNAC is: " + coefficients.cNAC );
-//        coefficients.cATMR = RegressionAgent.getATMRCoefficient( );
-//        System.out.println( "cATMR is: " + coefficients.cATMR );
-//        
-//        System.out.println( "Mean absolute percentage error is: " + RegressionAgent.getMAPE( ) );
-//        information.mape = RegressionAgent.getMAPE( );
-//        
-//        System.out.println( "Mean absolute deviation is: " + RegressionAgent.getMAD( ) );
-//        information.mad = RegressionAgent.getMAD( );
-//    }
-         
-    /**
-     * calculate the MO weights based on the coefficients
-     * @param coefficients
-     * @param weights 
-     */
-//    private void calculateWeights( Coefficients coefficients, Weights weights )
-//    {
-//        assert coefficients != null;
-//        assert weights != null;
-//        
-//        if( coefficients.cCBO == 0.0  ||
-//            coefficients.cNAC == 0.0  ||
-//            coefficients.cATMR == 0.0  )
-//        {
-//            // this shouldn't happen(!) so reset weights to initial values
-//            System.err.println( "weights un-initialised" );
-//            weights.weightCBO = AlgorithmParameters.INITIAL_wCBO;
-//            weights.weightNAC = AlgorithmParameters.INITIAL_wNAC;
-//            weights.weightATMR = AlgorithmParameters.INITIAL_wATMR;
-//        }
-//        else if( Double.isNaN( coefficients.cCBO ) ||
-//                 Double.isNaN( coefficients.cNAC ) ||
-//                 Double.isNaN( coefficients.cATMR ) )
-//        {
-//            // this could happen for example when the
-//            // data set contains only one observation
-//            // so do nothing...
-//        }
-//        else
-//        {
-//            double total = Math.abs( coefficients.cCBO ) +
-//                           Math.abs( coefficients.cNAC ) + 
-//                           Math.abs( coefficients.cATMR );
-//            
-//            weights.weightCBO = Math.abs( coefficients.cCBO ) / total ;
-//            weights.weightNAC = Math.abs( coefficients.cNAC ) / total;
-//            weights.weightATMR = Math.abs( coefficients.cATMR ) / total;
-//            
-//            weights.checkSum( );
-//        } 
-//        
-//         System.out.println( "weight for CBO is: " + df.format( weights.weightCBO ) );
-//         System.out.println( "weight for NAC is: " + df.format( weights.weightNAC ) );
-//         System.out.println( "weight for ATMR is: " + df.format( weights.weightATMR ) );
-//    }
-    
-    /**
-     * 31 August 2012
-     * in batch mode, write the final results to file
-     */
-    public void writeBatchResultsToFile( )
-    {
-        batchResults.calculateFinalResults( );
-        
-//        if( AlgorithmParameters.heuristics == false )
-//        {
-//            batchResults.writeFinalResults(
-//                Parameters.outputFilePath, 
-//                averageRunTimes, 
-//                AlgorithmParameters.constraintHandling );
-//        }
-//        else    // must be heuristic ant search
-//        {
-//            batchResults.writeFinalHeuristicResults( Parameters.outputFilePath );
-//        }
-        
-        // 23 July 2013
-        batchResults.writeFinalHeuristicResults( Parameters.outputFilePath );
-    }
       
-    /*
+    /**
+     *  Calculate final results and write them to appropriate output file
      *  17 Nov 2015 
      */
     public void writeResultstoFile( )
@@ -1191,6 +782,56 @@ public class Controller
         batchResults.calculateFinalResults( );
         batchResults.writeResults( );
     }
+    
+    private void investigateInterference( final int runNumber )
+    {
+        assert runNumber >= 0;
+        
+        BestPathsMatrix bpm = new BestPathsMatrix( pheromoneTable.size( ) );
+        switch( AlgorithmParameters.pheromoneStrength )
+        {
+            case AlgorithmParameters.MMAS_PHEROMONE_TRIPLE:
+                bpm.recordPath( this.thirdBestPathInColonyCombined );
+            case AlgorithmParameters.MMAS_PHEROMONE_DOUBLE:
+                bpm.recordPath( this.secondBestPathInColonyCombined );
+            case AlgorithmParameters.MMAS_PHEROMONE_SINGLE:
+                bpm.recordPath( this.bestPathInColonyCombined );
+                break;
+            default:
+                assert false : "impossible pheromone strength!";
+        }
+//        bpm.show( );
+        
+        WorstPathsMatrix wpm = new WorstPathsMatrix( pheromoneTable.size( ) );
+        if( AlgorithmParameters.MMAS_ANTIPHEROMONE == true && 
+            AlgorithmParameters.antiPheromonePhasePercentage > 0 )
+        {
+            switch( AlgorithmParameters.antipheromoneStrength )
+            {
+                case AlgorithmParameters.ANTIPHEROMONE_STRENGTH_TRIPLE:
+                    wpm.recordPath( this.thirdWorstPathInColonyCombined );
+                case AlgorithmParameters.ANTIPHEROMONE_STRENGTH_DOUBLE:
+                    wpm.recordPath( this.secondWorstPathInColonyCombined );
+                case AlgorithmParameters.ANTIPHEROMONE_STRENGTH_SINGLE:
+                    wpm.recordPath( this.worstPathInColonyCombined );
+                    break;
+                default:
+                    assert false : "impossible pheromone strength!";
+            }
+        }
+//        wpm.show( );
+        
+        PathInterferenceMatrix pim = new PathInterferenceMatrix( pheromoneTable.size( ) );
+        pim.registerBestPathMatrix( bpm );
+        pim.registerWorstPathMatrix( wpm );
+//        pim.showInterferenceMatrix( );
+        
+        double interference = pim.getInterference( ) * 100;
+//        System.out.println( "interference is: " + df.format( interference ) + "%" ); 
+        
+        batchResults.interference[ runNumber ] = interference;
+    }
+    
     
 }   // end class
 

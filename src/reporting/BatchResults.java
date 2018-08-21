@@ -49,6 +49,9 @@ public class BatchResults
     // 29 June 2017
     private static final String COST_FILE_NAME = "Cost.dat";
     
+    // 8 August 2018
+    private static final String INTERFERENCE_FILE_NAME = "Interference.dat";
+    
     
     
     /** number of iterations of ant colony */
@@ -191,6 +194,9 @@ public class BatchResults
     // 29 June 2017 for adaptive antipheromone
     private double bestFcomb[ ];
     private double bestFcombStdDev[ ];
+    
+    // 8 August 2018 for interference investigations
+    public double interference[ ]; 
     
     /**
      * constructor
@@ -364,6 +370,14 @@ public class BatchResults
             bestFcomb[ n ] = 0.0;
             bestFcombStdDev[ n ] = 0.0;
         }
+        
+        // 8 August 2018
+        interference = new double[ numberOfRuns ];
+        for( int m = 0; m < numberOfRuns; m++ )
+        {
+            interference[ m ] = 0.0;
+        }
+        
     }
     
     /**
@@ -718,43 +732,43 @@ public class BatchResults
         out7.close( );
     }
     
-    /**
-     * write final results of heuristic ant search
-     * @param path 
-     */
-    public void writeFinalHeuristicResults( String path  )
-    {
-        assert path != null;
-        assert path.length( ) > 0;
-
-        // String heuristicsNACResultsFileFullName =  
-        //    Parameters.outputFilePath + "\\" + HEURISTIC_NAC_OUTPUT_NAME;
-        // 13 Nove 2015
-        String heuristicsNACResultsFileFullName =  
-            Parameters.outputFilePath + "/" + HEURISTIC_NAC_OUTPUT_NAME;
-        
-        System.out.println( "file name is: " + heuristicsNACResultsFileFullName );
-        final String dir = System.getProperty( "user.dir" );
-        System.out.println( "current dir = " + dir );
-        
-        // set up the output files
-        PrintWriter out1 = null;
-        
-        boolean append = true;
-        try 
-        {
-            // don't want to overwrite existing result files
-            out1 = new PrintWriter( new FileWriter( 
-                new File( heuristicsNACResultsFileFullName), append ) );
-        } 
-        catch( IOException ex ) 
-        {
-            Logger.getLogger(BatchResults.class.getName()).log(Level.SEVERE, null, ex);
-            System.out.println("Can't open " + heuristicsNACResultsFileFullName );
-        }   
-        
-        for( int run = 0; run < numberOfRuns; run++ )
-        {
+//    /**
+//     * write final results of heuristic ant search
+//     * @param path 
+//     */
+//    public void writeFinalHeuristicResults( String path  )
+//    {
+//        assert path != null;
+//        assert path.length( ) > 0;
+//
+//        // String heuristicsNACResultsFileFullName =  
+//        //    Parameters.outputFilePath + "\\" + HEURISTIC_NAC_OUTPUT_NAME;
+//        // 13 Nove 2015
+//        String heuristicsNACResultsFileFullName =  
+//            Parameters.outputFilePath + "/" + HEURISTIC_NAC_OUTPUT_NAME;
+//        
+//        System.out.println( "file name is: " + heuristicsNACResultsFileFullName );
+//        final String dir = System.getProperty( "user.dir" );
+//        System.out.println( "current dir = " + dir );
+//        
+//        // set up the output files
+//        PrintWriter out1 = null;
+//        
+//        boolean append = true;
+//        try 
+//        {
+//            // don't want to overwrite existing result files
+//            out1 = new PrintWriter( new FileWriter( 
+//                new File( heuristicsNACResultsFileFullName), append ) );
+//        } 
+//        catch( IOException ex ) 
+//        {
+//            Logger.getLogger(BatchResults.class.getName()).log(Level.SEVERE, null, ex);
+//            System.out.println("Can't open " + heuristicsNACResultsFileFullName );
+//        }   
+//        
+//        for( int run = 0; run < numberOfRuns; run++ )
+//        {
 //           out1.println( ( Parameters.problemNumber + 1 ) + " " +
 //                         AlgorithmParameters.weightCBO + " " +  
 //                         AlgorithmParameters.weightNAC + " " +
@@ -765,29 +779,27 @@ public class BatchResults
 //                         this.whenCBOfound[ run ] + " " +
 //                         df.format( this.bestNAC[ run ] ) + " " + 
 //                         this.whenNACFound[ run ] ); 
-            
-            
-            int heuristics = AlgorithmParameters.heuristics ? 1 : 0;
-            
-            out1.println( ( Parameters.problemNumber + 1 ) + " " +
-                         heuristics + " " +
-                         AlgorithmParameters.BETA_CBO + " " +
-                         AlgorithmParameters.BETA_NAC + " " +
-                         ( run + 1 )  + " " + 
-                         df.format( this.bestCBO[ run ] ) + " " + 
-                         this.whenCBOfound[ run ] + " " +
-                         df.format( this.bestNAC[ run ] ) + " " + 
-                         this.whenNACFound[ run ] ); 
-        }
-            
-        out1.close( );
-    }
+//            
+//            
+//            int heuristics = AlgorithmParameters.heuristics ? 1 : 0;
+//            
+//            out1.println( ( Parameters.problemNumber + 1 ) + " " +
+//                         heuristics + " " +
+//                         AlgorithmParameters.BETA_CBO + " " +
+//                         AlgorithmParameters.BETA_NAC + " " +
+//                         ( run + 1 )  + " " + 
+//                         df.format( this.bestCBO[ run ] ) + " " + 
+//                         this.whenCBOfound[ run ] + " " +
+//                         df.format( this.bestNAC[ run ] ) + " " + 
+//                         this.whenNACFound[ run ] ); 
+//        }
+//            
+//        out1.close( );
+//    }
      
     
      /**
-     * write final results of ant search
-     * handles whether we're looking for fCBO, fNAC or fCOMB
-     * added 17 Nov 2015
+     * write results of ant search to file
      */
     public void writeResults( )
     {
@@ -795,60 +807,47 @@ public class BatchResults
         
         if( AlgorithmParameters.fitness == AlgorithmParameters.CBO )
         {
-            outputFileName = BatchResults.BEST_COUPLING_FILE_NAME;
+            outputFileName = BEST_COUPLING_FILE_NAME;
         }
         else if( AlgorithmParameters.fitness == AlgorithmParameters.NAC )
         {
-            outputFileName = BatchResults.BEST_NAC_FILE_NAME;
+            outputFileName = BEST_NAC_FILE_NAME;
         }
         else if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED )
         {
-            outputFileName = BatchResults.BEST_COMBINED_FILE_NAME;
+            outputFileName = BEST_COMBINED_FILE_NAME;
         }
         else
         {
             assert false; // execution should never reach this point    
         }
         
-        // 13 November 2015
+        // 13 November 2015 for results 
+        // 29 June 2017 for retries, attempts and cost curves 
+        // 8 August 2018 for interference
         String resultsFileFullName = "";
-        
+        String retriesFileFullName = "";
+        String costFileFullName = "";
+        String interferenceFileFullName = "";
         if( Parameters.platform == Parameters.Platform.Windows )
         {
             resultsFileFullName = Parameters.outputFilePath + "\\" + outputFileName;
+            retriesFileFullName = Parameters.outputFilePath + "\\" + RETRIES_ATTEMPTS_FILE_NAME;
+            costFileFullName = Parameters.outputFilePath + "\\" + COST_FILE_NAME;
+            interferenceFileFullName = Parameters.outputFilePath + "\\" + INTERFERENCE_FILE_NAME;
         }
         else    // we're on Mac
         {
             resultsFileFullName = Parameters.outputFilePath + "/" + outputFileName;
-        }
-        
-        // 28 June 2017 for Adaptive Antipheromone
-        String retriesFileFullName = "";
-        
-        if( Parameters.platform == Parameters.Platform.Windows )
-        {
-            retriesFileFullName = Parameters.outputFilePath + "\\" + RETRIES_ATTEMPTS_FILE_NAME;
-        }
-        else    // we're on Mac
-        {
             retriesFileFullName = Parameters.outputFilePath + "/" + RETRIES_ATTEMPTS_FILE_NAME;
-        }
-        
-        // 29 June 2917 for Adaptive Antipheromone
-        String costFileFullName = "";
-        
-        if( Parameters.platform == Parameters.Platform.Windows )
-        {
-            costFileFullName = Parameters.outputFilePath + "\\" + COST_FILE_NAME;
-        }
-        else    // we're on Mac
-        {
             costFileFullName = Parameters.outputFilePath + "/" + COST_FILE_NAME;
+            interferenceFileFullName = Parameters.outputFilePath + "/" + INTERFERENCE_FILE_NAME;
         }
         
         System.out.println( "fitness results file name is: " + resultsFileFullName );
         System.out.println( "retries and attempts file name is: " + retriesFileFullName );
         System.out.println( "cost information file name is: " + costFileFullName );
+        System.out.println( "interference file name is: " + interferenceFileFullName );
         
         final String dir = System.getProperty( "user.dir" );
         System.out.println( "current execution directory is: " + dir );
@@ -857,7 +856,7 @@ public class BatchResults
         PrintWriter out1 = null;
         PrintWriter out2 = null;
         PrintWriter out3 = null;
-        
+        PrintWriter out4 = null;
         
         boolean append = true;
         try 
@@ -866,6 +865,7 @@ public class BatchResults
             out1 = new PrintWriter( new FileWriter( new File( resultsFileFullName), append ) );
             out2 = new PrintWriter( new FileWriter( new File( retriesFileFullName), append ) );
             out3 = new PrintWriter( new FileWriter( new File( costFileFullName), append ) );
+            out4 = new PrintWriter( new FileWriter( new File( interferenceFileFullName), append ) );
         } 
         catch( IOException ex ) 
         {
@@ -875,13 +875,13 @@ public class BatchResults
         
         // for easier analysis in SPSS 14 Jan 2016
         int antiPheromoneOn = 0; // false
-        if( AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE > 0 )
+        if( AlgorithmParameters.antiPheromonePhasePercentage > 0 )
         {
             antiPheromoneOn = 1; // true
         }
         
         int MMAS_50_percent_on = 0; // false
-        if( AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE == true )
+        if( AlgorithmParameters.MMAS_REDUCE_BY_HALF == true )
         {
             MMAS_50_percent_on = 1;
         }
@@ -898,7 +898,7 @@ public class BatchResults
                             AlgorithmParameters.algorithm + " " +
                             AlgorithmParameters.NUMBER_OF_ANTS + " " +
                             antiPheromoneOn + " " +
-                            AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " " +
+                            AlgorithmParameters.antiPheromonePhasePercentage + " " +
                             MMAS_50_percent_on + " " + 
                             
                             df.format( this.bestCBO[ run ] ) + " " + 
@@ -910,50 +910,65 @@ public class BatchResults
                             df.format( this.bestCombined[ run ] ) + " " + 
                             evalsWhenCombinedFound + " " +
                     
-                            this.maxNumberOfInvalids[ run ] );
+                            // 26 June 2018
+                            // this.maxNumberOfInvalids[ run ] );
+                            AlgorithmParameters.pheromoneStrength + " " +
+                            AlgorithmParameters.antipheromoneStrength );
         }
             
         // 28 June 2017 for adaptive antipheromone
         // write retry and attempt information to file
-        for( int iteration = 0; iteration < numberOfIterations; iteration++ )
-        {
-            out2.println(   // Parameters.problemNumber  + " " +
-                            ( iteration + 1 )  + " " + 
-                            // AlgorithmParameters.fitness + " " +
-                            // AlgorithmParameters.algorithm + " " +
-                            // AlgorithmParameters.NUMBER_OF_ANTS + " " +
-                            // antiPheromoneOn + " " +
-                            // AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " " +
-                            // MMAS_50_percent_on + " " + 
-                    
-                            df.format( this.averageRetries[ iteration ] ) + " " +
-                            df.format( this.retriesStdDev[ iteration ] ) + " " +
-                                    
-                            df.format( this.averageOfAverageAttempts[ iteration ] ) + " " +
-                            df.format( this.attemptsStdDev[ iteration ]) );
-        }
+//        for( int iteration = 0; iteration < numberOfIterations; iteration++ )
+//        {
+//            out2.println(   // Parameters.problemNumber  + " " +
+//                            ( iteration + 1 )  + " " + 
+//                            // AlgorithmParameters.fitness + " " +
+//                            // AlgorithmParameters.algorithm + " " +
+//                            // AlgorithmParameters.NUMBER_OF_ANTS + " " +
+//                            // antiPheromoneOn + " " +
+//                            // AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " " +
+//                            // MMAS_50_percent_on + " " + 
+//                    
+//                            df.format( this.averageRetries[ iteration ] ) + " " +
+//                            df.format( this.retriesStdDev[ iteration ] ) + " " +
+//                                    
+//                            df.format( this.averageOfAverageAttempts[ iteration ] ) + " " +
+//                            df.format( this.attemptsStdDev[ iteration ]) );
+//        }
         
         // 29 June 2017 for adaptive antipheromone
         // write cost information to file
-        for( int iteration = 0; iteration < numberOfIterations; iteration++ )
+//        for( int iteration = 0; iteration < numberOfIterations; iteration++ )
+//        {
+//            out3.println(   // Parameters.problemNumber  + " " +
+//                            ( iteration + 1 )  + " " + 
+//                            // AlgorithmParameters.fitness + " " +
+//                            // AlgorithmParameters.algorithm + " " +
+//                            // AlgorithmParameters.NUMBER_OF_ANTS + " " +
+//                            // antiPheromoneOn + " " +
+//                            // AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " " +
+//                            // MMAS_50_percent_on + " " + 
+//                    
+//                            df.format( this.bestFcomb[ iteration ] ) + " " +
+//                            df.format( this.bestFcombStdDev[ iteration ] ) );
+//                                    
+//        }
+        
+        // 8 August 2018
+        for( int run = 0; run < numberOfRuns; run++ )
         {
-            out3.println(   // Parameters.problemNumber  + " " +
-                            ( iteration + 1 )  + " " + 
-                            // AlgorithmParameters.fitness + " " +
-                            // AlgorithmParameters.algorithm + " " +
-                            // AlgorithmParameters.NUMBER_OF_ANTS + " " +
-                            // antiPheromoneOn + " " +
-                            // AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " " +
-                            // MMAS_50_percent_on + " " + 
-                    
-                            df.format( this.bestFcomb[ iteration ] ) + " " +
-                            df.format( this.bestFcombStdDev[ iteration ] ) );
-                                    
+            out4.println(   Parameters.problemNumber + " " + 
+                            AlgorithmParameters.pheromoneStrength  + " " +            
+                            AlgorithmParameters.antipheromoneStrength  + " " +
+                            AlgorithmParameters.antiPheromonePhasePercentage + " " +
+                            ( run + 1 ) + " " + 
+                            df.format( this.interference[ run ] ) );
         }
         
         out1.close( );
         out2.close( );
         out3.close( );
+        out4.close( );
     }
      
     
