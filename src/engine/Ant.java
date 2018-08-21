@@ -11,9 +11,8 @@ import config.AlgorithmParameters;
 import config.Parameters;
 import static engine.Ant.END_OF_CLASS;
 import java.util.*;
-import pheromone.AlphaTable;
+import pheromone.AlphaMatrix;
 import myUtils.Utility;
-import softwareDesign.CLSClass;
 
 /**
  *
@@ -31,17 +30,20 @@ public class Ant
     /** size of the amList i.e. number of methods and attributes */
     protected final int amListSize;
     
+    /** reference to list of attributes */
+    protected List< Attribute>  attributeList;
+    
+    /** number of methods in software design */
+    protected List< Method > methodList;
+    
     /** number of classes in software design */
     protected final int numberOfClasses;
     
     /** reference to the table of pheromone values */
-    protected AlphaTable alphaTable;
+    protected AlphaMatrix alphaTable;
     
     /** current path, node by node */
     protected Path currentPath; 
-    
-    /** list of classes that user elects to 'freeze' */
-    protected List< CLSClass> freezeList;
     
     /** is this ant handling constraints? */
     protected boolean handlingConstraints;
@@ -64,23 +66,25 @@ public class Ant
      * @param reference to list of attributes and methods
      * @param number of classes
      * @param reference to alpha table
-     * @param list of classes that user elects to "freeze"
      * @param handling constraints boolean
      */
     public Ant( List< Node > nodes,
+                List< Attribute > attributeList,
+                List< Method > methodList,
                 int numberOfClasses,
-                AlphaTable at,
-                List< CLSClass > freezeList,
+                AlphaMatrix at,
                 boolean handlingConstraints )
     {
         assert nodes != null;
         this.amList = nodes;
-        assert at != null;
-        this.alphaTable = at; 
-        assert freezeList != null;
-        this.freezeList = freezeList;
+        assert attributeList != null;
+        this.attributeList = attributeList;
+        assert methodList != null;
+        this.methodList = methodList;
         assert numberOfClasses > 0;
         this.numberOfClasses = numberOfClasses;
+        assert at != null;
+        this.alphaTable = at; 
         
         amListSize = amList.size( );
         
@@ -110,34 +114,30 @@ public class Ant
         current = new Nest( "nest", 0 );
         path.add( current );
         
-        // secondly, construct the path with elements from 'frozen' classes 
-        constructFromFrozenClasses( path );
-        
         // now create a working list of all possible remaining elements
         // i.e. attributes, methods and ( end of classes - 1 )
         // coz the last node must be an EndOfClass
-        // 20 July 2012
-        // working list amended to work with all elements
-        // EXCEPT those in frozen classes
-        final int numberOfElementsFrozen = getNumberOfElementsFrozen( );
         
         List< Node > workingList = createWorkingList( );
         final int workingListSize = workingList.size( );
-        final int numberOfEoCUsed = this.freezeList.size( );
-        assert workingListSize == 
-            amListSize - numberOfElementsFrozen + ( numberOfClasses - 1 - numberOfEoCUsed ):
-                "working list size is: " + workingListSize +
-                ", am list size is: " + amListSize +
-                ", number of classes is: " + numberOfClasses + 
-                ", numberOfElementsFrozen is: " + numberOfElementsFrozen;
-        
+        assert workingListSize == amListSize + ( numberOfClasses - 1);
+
         // then node by node, construct the remaining path 
         // depending on the attractiveness of each possibility
         int nodeCounter = 0;
+// 7 August 2018        
+//        int attsLeft = this.attributeList.size( );
+//        int metsLeft = this.methodList.size( );
+//        int eocLeft = this.numberOfClasses - 1; /* allow space for last */
+        
         while( workingList.isEmpty( ) == false )
         {
             // select the next node, according to attractiveness
             next = selectNextNode( current, workingList, nodeCounter );
+            
+            // 7 August 2018
+//            next = selectNextValidNodeTracking( 
+//                current, workingList, nodeCounter, attsLeft, metsLeft, eocLeft );
             
             // add the next node to the solution path
             path.add( next );
@@ -145,19 +145,35 @@ public class Ant
             // and so the ant moves through the environment
             current = next;
             
+            // update the counters
             nodeCounter++;
+            
+// 7 August 2018            
+//            if( current instanceof Attribute )
+//            {
+//                attsLeft--;
+//            }
+//            else if( current instanceof Method )
+//            {
+//                metsLeft--;
+//            }
+//            else if( current instanceof EndOfClass )
+//            {
+//                eocLeft--;
+//            }
+//            else
+//            {
+//                assert false: "impossible type of node!!";
+//            }
         }
         
         assert workingList.isEmpty( );
-        assert path.size( ) == workingListSize + numberOfElementsFrozen + 1 + numberOfEoCUsed:
+        assert path.size( ) == workingListSize + 1 /* for the nest */:
             "working list size is: " + workingListSize +
             "path size is " + path.size( );
                 
         // the last node is always an end of class
         path.add( new EndOfClass( END_OF_CLASS, workingListSize + 1 ) );
-        
-        // lastly assert invariance,
-        // i.e. the number of EndOfClasses == number of classes
         
         assert( path.size( ) == amList.size( ) + this.numberOfClasses + 1 /* for the nest */ );
         
@@ -201,10 +217,10 @@ public class Ant
         this.valid = checkValidity( path );
         
         this.currentPath.setValid( this.valid );
-        
- 
-
     }
+    
+    
+    
     
     /**
      * create a working list of path elements containing
@@ -241,28 +257,25 @@ public class Ant
             
             assert node != null;
             
-            if( isInAFrozenClass( node ) == false )
-            {       
-                workingList.add( node );
-            }
+            workingList.add( node );
         }
         
         // at this point, the working list must be the 
         // same size as the attribute and method list size
-        assert workingList.size( ) == amListSize - getNumberOfElementsFrozen( ); 
-//        System.out.println("working list size is: " + workingList.size( ) );
-        
+        assert workingList.size( ) == amListSize; 
         
         // tricky bit now - last node is always an EndOfClass
         // and this is done in the calling method. 
         // Thus add (number of classes - 1) EndOfClasses to working list
+        
         // 24 July 2012
         // frozen classes are done first and have already used up their
         // end of class nodes
         int counter = amListSize + 1;
         int i = 0;
-        final int numberOfEoCUsed = this.freezeList.size( );
-        final int numberOfEndOfClasses = ( this.numberOfClasses - 1 ) - numberOfEoCUsed;
+        
+        //final int numberOfEoCUsed = this.freezeList.size( );
+        final int numberOfEndOfClasses = ( this.numberOfClasses - 1 );
         
         for( i = 0; i < numberOfEndOfClasses; i++ )
         {
@@ -270,8 +283,7 @@ public class Ant
         }
         
         assert counter == amListSize + numberOfEndOfClasses + 1;
-        assert workingList.size( ) == 
-            ( amListSize - getNumberOfElementsFrozen( ) ) + numberOfEndOfClasses;
+        assert workingList.size( ) == amListSize + numberOfEndOfClasses;
         
         // for testing
 //        System.out.println( "this is the working list" );
@@ -292,7 +304,7 @@ public class Ant
      * @return the next node 
      */
     protected Node selectNextNode( 
-        Node current, List< Node > workingList, int nodeCounter )
+       Node current, List< Node > workingList, int nodeCounter )
     {
         assert current != null;
         assert workingList != null;
@@ -546,103 +558,7 @@ public class Ant
         return this.currentPath;
     }
     
-    /**
-     * add nodes to the path based on the frozen class(es)
-     * @param path 
-     */
-    protected void constructFromFrozenClasses( Path path )
-    {
-        assert path != null;
-        // precondition: must already contain the "nest"
-        assert path.size( ) == 1;
-        
-        // keep a count of nodes we've added to the path
-        int nodeCount = 1;
-        
-        // the element numbers in the path are one more than 
-        // in the amlist because of the "nest"
-        
-        for( CLSClass c : this.freezeList )
-        {
-            List< Method > mList = c.getMethodList( );
-            for( Method m : mList )
-            {
-                path.add( new Method( m.getName( ), m.getNumber( ) + 1 ) );
-                nodeCount++;
-            }
-            
-            List< Attribute > aList = c.getAttributeList( );
-            for( Attribute a : aList )
-            {
-                path.add( new Attribute( a.getName( ), a.getNumber( ) + 1 ) );
-                nodeCount++;
-            }
-            
-            nodeCount++;
-            path.add( new EndOfClass( END_OF_CLASS, nodeCount ) );
-        }
-    }
     
-    
-    protected int getNumberOfElementsFrozen( )
-    {
-        assert this.freezeList != null;
-        int result = 0;
-        
-        for( CLSClass c : this.freezeList )
-        {
-            List< Method > mList = c.getMethodList( );
-            result += mList.size( );
-            
-            List< Attribute > aList = c.getAttributeList( );
-            result += aList.size( );
-        }
-        
-        return result;
-    }
-    
-    protected boolean isInAFrozenClass( Node node )
-    {
-        assert node != null;
-        assert this.freezeList != null;
-        boolean result = false;
-        
-        for( CLSClass c : this.freezeList )
-        {
-            if( node instanceof Method )
-            {
-                List< Method > mList = c.getMethodList( );
-                
-                for( Method m : mList )
-                {
-                    if( m.getNumber( ) == node.getNumber( ) )
-                    {
-                        result = true;
-                        break;
-                    }
-                }
-            }
-            else if( node instanceof Attribute )
-            {
-                List< Attribute > aList = c.getAttributeList( );
-                
-                for( Attribute a : aList )
-                {
-                    if( a.getNumber( ) == node.getNumber( ) )
-                    {
-                        result = true;
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                assert false : "impossible type of node";
-            }
-        }
-        
-        return result;
-    }
 
     /**
      * apply heuristic information via beta.
@@ -658,287 +574,147 @@ public class Ant
     }
     
 
-    /**
-     * generate a valid path to be passed the to the environment.
-     * 7 June 2017
-     */
-    public void generateValidPath( )
-    {
-        assert this.amList.size( ) > 0;
-        assert this.numberOfClasses > 0; 
-        
-        final int pathLength = this.amList.size( ) + this.numberOfClasses;
-        
-        List< Node > localAMList = createLocalAMList( this.amList );
-        assert localAMList.size( ) == this.amList.size( );
-        
-        List< Node > localEoCList = createLocalEoCList( this.numberOfClasses - 1, localAMList );
-        assert localEoCList.size( ) == this.numberOfClasses - 1;
-        
-        // create local node variables for path construction
-        Node current = null;
-        Node next = null;
-        
-        // create a new path though the environment  
-        // to which path can be added
-        Path path = new Path( new DesignPathRole( ) );
-        
-        // the first node is always the nest, where the state is 'start'
-        current = new Nest( "nest", 0 );
-        path.add( current );
-        this.state = State.start; 
-        
-        // then node by node, construct the remaining path 
-        // depending on the attractiveness of each possibility
-        int nodeCounter = 0;
-        while( nodeCounter < pathLength )
-        {
-            // select the next valid node, according to attractiveness
-            next = selectNextValidNode( current, localAMList, localEoCList, nodeCounter );
-            
-            // add the next node to the solution path
-            path.add( next );
-            
-            // and so the ant moves through the environment
-            current = next;
-            
-            nodeCounter++;
-        }
-        
-        assert localAMList.isEmpty( );
-        assert localEoCList.isEmpty( );
-        
-        // the last node is always an end of class
-        path.add( new EndOfClass( END_OF_CLASS, pathLength - 1) );
-        
-        // lastly assert invariance,
-        // i.e. the number of EndOfClasses == number of classes
-        
-        assert( path.size( ) == localAMList.size( ) + this.numberOfClasses + 1 /* for the nest */ );
-        
-        if( Parameters.SOLUTION_GENERATION_ROBUSTNESS_CHECK == true )
-        {
-            Iterator< Node > it = path.iterator( );
-            int counter = 0;
-            while( it.hasNext( ) ) 
-            {
-                Node node = it.next( );
-
-                if( node instanceof EndOfClass )
-                {
-                    counter++;
-                }
-            }
-
-            String s = "";
-            Iterator< Node > it2 = path.iterator( );
-            if( counter != this.numberOfClasses )
-            {
-                while( it2.hasNext( ) )
-                {
-                    Node node = it2.next( );
-                    s += ( node.getName( ) + " " + node.getNumber( ) + " ," ); 
-                    if( node instanceof EndOfClass )
-                    {
-                        System.out.println( s );
-                        s = "";
-                    }
-                }
-            }
-            assert counter == this.numberOfClasses;
-        }
-        
-        // after solution path is constructed, assign it to 
-        // the current vertices instance variable 
-        this.currentPath = path;
-        
-        // 2 Feb 2016
-        this.valid = checkValidity( path );
-        
-        this.currentPath.setValid( this.valid );
-    }
     
-    /**
-     * 7 June 2017
-     * create a local copy of the attribute and method list
-     * @param list
-     * @return local AM list
-     */
-    private List< Node > createLocalAMList( List< Node > list ) 
-    {
-        assert list != null;
-        
-        List< Node > locaAMList = new ArrayList< Node >( );
-        
-        Iterator< Node > it = list.iterator( );
-        
-        while( it.hasNext( ) )
-        {    
-            locaAMList.add( it.next( ) );
-        }    
-       
-        return locaAMList;   
-    }
     
-    /**
-     * 7 June 2017
-     * create a local list of End of Class nodes 
-     * @param numberOfClasses
-     * @param list of attributes and methods
-     * @return local EoC list
-     */
-    private List< Node > createLocalEoCList( final int numberOfClasses, List< Node > amList )
-    {
-        assert numberOfClasses > 0;
-        assert amList != null;
-        
-        List< Node > localEoCList = new ArrayList< Node >( );
-        final int nodeNumber = amList.size( );
-        
-        for( int i = nodeNumber; i < nodeNumber + numberOfClasses; i++ )
-        {
-            localEoCList.add( new EndOfClass( END_OF_CLASS, i ) );  
-        }
-        
-        return localEoCList;
-    }
     
-    /**
-     * select next valid node
-     * @param current
-     * @param localAMList
-     * @param localEoCList
-     * @param nodeCounter
-     * @return 
+   /**
+     * select the next valid node based on 
+     * (i) pheromone 'attractiveness' and (ii) 1+1 constraint
+     * by tracking numbers of attributes and methods
+     * 8 August 2018
+     * @param current - the current node
+     * @param workingList - the working list of path
+     * @param nodeCounter - the node counter
+     * @param attCounter - the attribute counter
+     * @param metCounter - the method counter
+     * @param eocCounter - the EndofClass counter
+     * @return the next node 
      */
-    private Node selectNextValidNode( 
+    protected Node selectNextValidNodeTracking( 
        Node current, 
-       List< Node > localAMList, 
-       List< Node > localEoCList, 
-       int nodeCounter )
+       List< Node > workingList, 
+       int nodeCounter,
+       int attCounter,
+       int metCounter,
+       int eocCounter )
     {
         assert current != null;
-        assert localAMList != null;
-        // assert localAMList.size( ) > 0;
-        assert localEoCList != null;
-        assert localEoCList.size( ) > 0;
+        assert workingList != null;
+        assert workingList.size( ) > 0;
         assert nodeCounter >= 0;
+        assert attCounter >= 0;
+        assert metCounter >= 0;
+        assert eocCounter >= 0;
+
+        final int workingListSize = workingList.size( );
         
-        Node result = new Node( );
-        
-        switch( this.state )
-        {
-            case start:
-            case atEoC:
-                result = selectNextNodeFromAMList( current, localAMList, nodeCounter );
-                assert result != null : "error selecting next node from AM list";
-                this.state = State.inAClass;
-                break;
-                    
-            case inAClass:
-                result = selectNextFromEither( current, localAMList, localEoCList, nodeCounter );
-                assert result != null : "error selecting next node from either list. Node counter is: " + nodeCounter;
-                break;
-                
-            case invalid:
-                System.err.println( "invalid state" );
-                break;
-                
-            default:
-                System.err.println( "unknown state" );
-                break;
-        }
-        
-        return result;        
-    }
-    
-    /**
-     * 8 June 2017
-     * @param current
-     * @param amList
-     * @param nodeCounter
-     * @return 
-     */
-    private Node selectNextNodeFromAMList( Node current, List< Node > amList, int nodeCounter )
-    {
-        assert current != null;
-        assert amList != null;
-        assert amList.size( ) > 0;
-        assert nodeCounter >= 0;
-        final int amListSize = amList.size( );
-                   
         // handle the situation where the ant reaches the end of the path
         // i.e there's only ONE node left in the list 
-        if( amListSize == 1 )
+        if( workingListSize == 1 )
         {
-            Node result = amList.remove( 0 );
-            assert amList.isEmpty( );
+            Node result = workingList.remove( 0 );
+            assert workingList.isEmpty( );
             return result;
         }
         
         // else there must be more than one node to select from!
-        assert amList.size( ) > 1;
+        assert workingList.size( ) > 1;
         
         // and so let's choose it!
         final int currentNodeNumber = current.getNumber( );
         
         // prepare a fitness proportionate node selection mechanism
         // implemented by a "roulette wheel" approach
-        double[ ] probabilities = new double[ amListSize ];
+        double[ ] probabilities = new double[ workingListSize ];
         double sum = 0.0;
         
         // for each node in the working list,
         // get the probability related to
         // 'from' the current node (x axis in the table)
         // 'to' all possible path (y axis in the table)
-        for( int i = 0; i < amListSize; i++ )
+        for( int i = 0; i < workingListSize; i++ )
         {
-            int amListNodeNumber = amList.get( i ).getNumber( );
+            int workingListNodeNumber = workingList.get( i ).getNumber( );
            
-            final double prob = this.alphaTable.getProbabilityAt( currentNodeNumber, amListNodeNumber );
-           
+            final double temp = this.alphaTable.getProbabilityAt( currentNodeNumber, workingListNodeNumber );
+            double prob = temp;
+            
             probabilities[ i ] = prob; 
             
             sum += probabilities[ i ];
         }
         
-        // now spin the "roulette wheel" to get a random number...
-        double random = Utility.getRandomInRange( 0.0, sum );
-        assert random >= 0.0;
-        assert random <= sum;
-        
-        double runningTotal = 0.0;
-        boolean finished = false;
+        boolean invalid = true;
         int selectedIndex = 0;
         
-        // select a node depending on probability
-        for( int j = 0; j < amListSize && ! finished; j++ )
+        int loopCounter = 0;
+        while( invalid )
         {
-            runningTotal += probabilities[ j ];
-            
-            if( runningTotal < random )
+            loopCounter++;
+            // spin the "roulette wheel" to get a random number...
+            double random = Utility.getRandomInRange( 0.0, sum );
+            assert random >= 0.0;
+            assert random <= sum;
+
+            double runningTotal = 0.0;
+            boolean finished = false;
+         
+
+            // select a node depending on probability
+            for( int j = 0; j < workingListSize && ! finished; j++ )
             {
-                // do nothing, continue...
+                runningTotal += probabilities[ j ];
+
+                if( runningTotal < random )
+                {
+                    // do nothing, continue...
+                }
+                else
+                {
+                    finished = true;
+                    selectedIndex = j;
+                }
+            }
+            
+            Node n = workingList.get( selectedIndex );
+            String s = "";
+            if( n instanceof Method && metCounter <= eocCounter )
+            {
+                // we try again, leaving invalid flag true
+                s = "method";
+            }
+            else if( n instanceof Attribute && attCounter <= eocCounter )
+            {
+                // again we try again, leaving invalid flag true
+                s = "attribute";
             }
             else
             {
-                finished = true;
-                selectedIndex = j;
+                invalid = false;
             }
-      }
+            System.out.print( "invalid: " + invalid + ", " );
+            System.out.print( "node: " + s + ", " );
+            System.out.print( "working list size: " + workingList.size( ) + ", " );
+            System.out.print( "loopCounter:  " + loopCounter + ", " );
+            System.out.print( "metCounter:  " + metCounter + ", " );
+            System.out.print( "attCounter:  " + attCounter + ", " );
+            System.out.println( "eocCounter:  " + eocCounter + ", " );
+            
+        }
         
 //        System.out.print("out of loop and j is: " + j + "," );
 //        System.out.println("and selected index is: " + selectedIndex );
 //        System.out.println( " " );
         
         assert selectedIndex >= 0;
-        assert selectedIndex < amListSize :
+        assert selectedIndex < workingListSize :
                 "selected index is: " + selectedIndex + 
-                " working list size is: " + amListSize;
+                " working list size is: " + workingListSize;
         
         // return and remove the selected node in the working list
-        return amList.remove( selectedIndex );
+        return workingList.remove( selectedIndex );       
     }
+    
     
    
     /**

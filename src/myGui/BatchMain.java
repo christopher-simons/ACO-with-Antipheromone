@@ -16,10 +16,7 @@ public class BatchMain
 {
     private static ProblemController problemController;
     
-    /**
-     * BatchMain developed for adaptive anti-pheromone experiments
-     * June 2017
-    */
+    // starting point for anti-pheromone experiments
     public static void main( String[] args ) 
     {
         assert args != null;
@@ -28,71 +25,66 @@ public class BatchMain
             assert false : "no command line arguments required";
         }    
         
-        // ensure correct settings for July 2017
-        assert Parameters.mode == Parameters.Mode.Batch;
+        // set up output file path for appropriate platform here
+        Parameters.platform = Parameters.platform.Windows;
+        // Parameters.platform = Parameters.platform.Mac;
         
-        assert AlgorithmParameters.algorithm == AlgorithmParameters.MMAS;
-        assert AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE == false; // set MMAS to usual i.e. reduce to minimum of MAXMIN
-        
-        assert AlgorithmParameters.constraintHandling == true;  // no invalid solutions
-        assert AlgorithmParameters.NUMBER_OF_ANTS == 100;
-        assert AlgorithmParameters.NUMBER_OF_ITERATIONS == 1000;
-        
-        // Nov 2015 set up output file path for appropriate platform
         if( Parameters.platform == Parameters.Platform.Mac )
         {
-            Parameters.outputFilePath = "/Users/Chris/Documents/data";
+            Parameters.outputFilePath = "/Users/Chris/data";
         }
         else // must be Windows
         {
-            // Parameters.outputFilePath = "W:\\Research\\Writings\\2015 Paper 42 - Antipheromone GECCO 2016\\data";
-            // Parameters.outputFilePath = "C:\\Users\\cl-simons\\Dropbox\\2015 10 Antipheromone\\data";
-            Parameters.outputFilePath = "D:\\ExperimentOutput";
+            Parameters.outputFilePath = "C:\\Users\\cl-simons\\ACO_results";
         }
-        System.out.println( "selected path for output files is: " + Parameters.outputFilePath );
         
-        AlgorithmParameters.fitness = AlgorithmParameters.COMBINED;  // set up cost to Fcomb
-        AlgorithmParameters.antipheromoneStrength = AlgorithmParameters.ANTIPHEROMONE_STRENGTH_TRIPLE;
-            
-        for( int problem = Parameters.CBS; problem <= Parameters.CBS; problem++ )
+        // set up RHO, the pheromone decay coefficient, for each algorithm
+        if( AlgorithmParameters.algorithm == AlgorithmParameters.SIMPLE_ACO )
         {
-            Parameters.problemNumber = problem;
-            generateProblem( problem );
-            
-            for( int ap = 8; ap < 9; ap++ )
-            {
-                AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = ap;
-                System.out.println( "******* problem is: " + problem + 
-                    ", fitness is: " + AlgorithmParameters.fitness + 
-                    // ", MMAS subtractive AP is: " + AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE +
-                    ", AP Threshold is: " + AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " ******"  );
-                doAntSearch( );
-            
-            }   // end for threshold values 0..9
-
-//            for( int y = 10; y <= 100; y += 10 )
-//            {
-//                AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = y;
-//                System.out.println( "******* problem is: " + problem + 
-//                    ", fitness is: " + AlgorithmParameters.fitness +
-//                    ", MMAS subtractive AP is: " + AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE + 
-//                    ", AP Threshold is: " + AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " ******"  );
-//                doAntSearch( problem );
-//
-//            }   // end for threshold values 10..100//            for( int y = 10; y <= 100; y += 10 )
-//            {
-//                AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE = y;
-//                System.out.println( "******* problem is: " + problem + 
-//                    ", fitness is: " + AlgorithmParameters.fitness +
-//                    ", MMAS subtractive AP is: " + AlgorithmParameters.MMAS_SUBTRACTIVE_ANTIPHEROMONE + 
-//                    ", AP Threshold is: " + AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " ******"  );
-//                doAntSearch( problem );
-//
-//            }   // end for threshold values 10..100
-            
-        }   // end for each problem 
+            AlgorithmParameters.RHO = AlgorithmParameters.SimpleACO_RHO;
+        }
+        else if( AlgorithmParameters.algorithm == AlgorithmParameters.MMAS )
+        {
+            AlgorithmParameters.RHO = AlgorithmParameters.MMAS_RHO;
+        }   
+        else
+        {
+            assert false : "impossible algorithm to set RHO!";
+        }
         
-    }
+        Parameters.problemNumber = Parameters.RANDOMISED; 
+        generateProblem( Parameters.problemNumber );
+        
+        showParameters( );
+        
+        
+//        for( int P_Strength = AlgorithmParameters.MMAS_PHEROMONE_SINGLE; 
+//                 P_Strength <= AlgorithmParameters.MMAS_PHEROMONE_TRIPLE; 
+//                 P_Strength++ )
+//        {
+            AlgorithmParameters.pheromoneStrength = AlgorithmParameters.MMAS_PHEROMONE_TRIPLE;
+            
+            for( int AP_Strength = AlgorithmParameters.ANTIPHEROMONE_STRENGTH_SINGLE; 
+                     AP_Strength <= AlgorithmParameters.ANTIPHEROMONE_STRENGTH_TRIPLE;
+                     AP_Strength++ )
+            {
+                AlgorithmParameters.antipheromoneStrength = AP_Strength;
+
+                for( int ap = 0; ap <= 10; ap++ )
+                {
+                    AlgorithmParameters.antiPheromonePhasePercentage = ap;
+                    System.out.println( 
+                        "******* problem is: " + 
+                        getProblemNumberAsString( Parameters.problemNumber ) + 
+                        ", AP percent phase limit is: " + 
+                        AlgorithmParameters.antiPheromonePhasePercentage + " ******"  );
+
+                    doAntSearch( );
+                }   
+            }
+//        }   
+        
+    }   // end main
     
     /**
      * do the ant search
@@ -111,7 +103,7 @@ public class BatchMain
         }
         
         controller.writeResultstoFile( );
-        System.out.println( "batch ACO complete" );
+        System.out.println( "ACO complete!" );
     }
 
     /**
@@ -165,6 +157,99 @@ public class BatchMain
         else
         {
             assert false : "impossible design problem!!";
+        }
+    }
+    
+    /**
+     * for convenience, express problem number as string
+     * 14 June 2018
+     * @param problem number 
+     */
+    private static String getProblemNumberAsString( final int problem )
+    {
+        String result = "";
+        switch( problem )
+        {
+            case Parameters.CBS:
+                result = "CBS";
+                break;
+            case Parameters.GDP:
+                result = "GDP";
+                break;
+            case Parameters.RANDOMISED:
+                result = "Randomised";
+                break;
+            case Parameters.SC:
+                result = "SC";
+                break;
+            default:
+                result = "unknown!!";
+                break;
+        }
+        return result;
+    }
+    
+    /**
+     * show the configured run parameters and algorithms parameters
+     * 13 June 2018
+     */
+    private static void showParameters( )
+    {
+        System.out.println( "RUN PARAMETERS" );
+        System.out.println( "\tselected path for output files: " + Parameters.outputFilePath );
+        System.out.println( "\tnumber of runs: " + Parameters.NUMBER_OF_RUNS ); 
+   
+        System.out.println( "ALGORITHM PARAMETERS");
+        System.out.println( "\tants: " + AlgorithmParameters.NUMBER_OF_ANTS );
+        System.out.println( "\tevaluations: " + AlgorithmParameters.NUMBER_OF_EVALUATIONS );
+        
+        String s1 = "";
+        switch( AlgorithmParameters.fitness )
+        {
+            case 1: s1 = "CBO"; break;
+            case 2: s1 = "NAC"; break;
+            case 3: s1 = "Combined"; break;  
+            default: s1 = "Unknown!!"; break;
+        }
+        System.out.println( "\tfitness: " + s1 );
+        
+        System.out.println( "\tconstraint handling: " + AlgorithmParameters.constraintHandling );
+        System.out.println( "\theuristics: " + AlgorithmParameters.heuristics );
+           
+        System.out.println( "\tALPHA: " + AlgorithmParameters.ALPHA );
+        System.out.println( "\tMU: " + AlgorithmParameters.MU );
+        
+        if( AlgorithmParameters.algorithm == AlgorithmParameters.SIMPLE_ACO ) 
+        {
+            System.out.println( "\talgorithm: Simple-ACO" );
+            System.out.println( "\tRHO: " + AlgorithmParameters.RHO );
+            String s2 = AlgorithmParameters.SIMPLE_ACO_SUBTRACTIVE_ANTIPHEROMONE == false ? "OFF" : "ON"; 
+            System.out.println( "\tSimple ACO subtractive antipheromone: " + s2 );
+            if( AlgorithmParameters.SIMPLE_ACO_SUBTRACTIVE_ANTIPHEROMONE == true )
+            {
+                System.out.println( "\tPHI: " + AlgorithmParameters.PHI );
+            }
+        }
+        else    // must be MMAS
+        {
+            assert AlgorithmParameters.algorithm == AlgorithmParameters.MMAS;
+            System.out.println( "\talgorithm: MMAS" );
+            System.out.println( "\trho: " + AlgorithmParameters.RHO );
+            System.out.println( "\tpheromone strength: " + AlgorithmParameters.pheromoneStrength );
+            String s3 = AlgorithmParameters.MMAS_ANTIPHEROMONE == false ? "OFF" : "ON";       
+            System.out.println( "\tMMAS antipheromone: " + s3 );
+            if( AlgorithmParameters.MMAS_ANTIPHEROMONE == true )
+            {
+                if( AlgorithmParameters.MMAS_REDUCE_BY_HALF == true )
+                {
+                    System.out.println( "\tMMAS antipheromone => reduce by half" );
+                }
+                else
+                {
+                    System.out.println( "\tMMAS antipheromone => reduce to Min" );
+                }
+                System.out.println( "\tAntipheromone strength: " + AlgorithmParameters.antipheromoneStrength );
+            }
         }
     }
   
