@@ -13,6 +13,7 @@ import static engine.Ant.END_OF_CLASS;
 import java.util.*;
 import pheromone.AlphaMatrix;
 import myUtils.Utility;
+import problem.*;
 
 /**
  *
@@ -48,6 +49,8 @@ public class Ant
     /** is this ant handling constraints? */
     protected boolean handlingConstraints;
     
+    protected final List< Node > tspNodes;
+    
     /** 
      * validity of solution path
      * true if all classes have at least 1 + 1
@@ -63,17 +66,21 @@ public class Ant
     
     /** 
      * constructor
-     * @param reference to list of attributes and methods
-     * @param number of classes
-     * @param reference to alpha table
-     * @param handling constraints boolean
+     * @param nodes - reference to list of nodes
+     * @param attributeList - reference to list of attributes
+     * @param methodList - reference to list of attributes
+     * @param numberOfClasses
+     * @param at - reference to alpha matrix
+     * @param handlingConstraints - boolean
+     * @param tspNodes - list of nodes for TSP
      */
     public Ant( List< Node > nodes,
                 List< Attribute > attributeList,
                 List< Method > methodList,
                 int numberOfClasses,
                 AlphaMatrix at,
-                boolean handlingConstraints )
+                boolean handlingConstraints,
+                List< Node > tspNodes )
     {
         assert nodes != null;
         this.amList = nodes;
@@ -81,10 +88,11 @@ public class Ant
         this.attributeList = attributeList;
         assert methodList != null;
         this.methodList = methodList;
-        assert numberOfClasses > 0;
+        assert numberOfClasses >= 0;
         this.numberOfClasses = numberOfClasses;
         assert at != null;
         this.alphaTable = at; 
+        assert tspNodes != null;
         
         amListSize = amList.size( );
         
@@ -92,6 +100,8 @@ public class Ant
         valid = false;
         
         this.handlingConstraints = handlingConstraints;
+        this.tspNodes = tspNodes;
+       
     }
     
     /**
@@ -100,35 +110,84 @@ public class Ant
      */
     public void generateSolution( )
     {
-        assert amList.size( ) > 0;
+        assert amList.size( ) >= 0;
         
-        // create a new path though the environment  
-        // to which path can be added
-        Path path = new Path( new DesignPathRole( ) );
-        
-        // create local node variables for path construction
-        Node current = null;
-        Node next = null;
-        
-        // the first node is always the nest
-        current = new Nest( "nest", 0 );
-        path.add( current );
-        
-        // now create a working list of all possible remaining elements
-        // i.e. attributes, methods and ( end of classes - 1 )
-        // coz the last node must be an EndOfClass
-        
+        // First, create a working list of all possible elements
         List< Node > workingList = createWorkingList( );
         final int workingListSize = workingList.size( );
-        assert workingListSize == amListSize + ( numberOfClasses - 1);
-
-        // then node by node, construct the remaining path 
-        // depending on the attractiveness of each possibility
+        
+        if( Parameters.problemNumber == Parameters.TSP_BERLIN52 )
+        {
+            assert workingListSize == TSP_Berlin52.NUMBER_OF_CITIES;
+        }
+        else if( Parameters.problemNumber == Parameters.TSP_ST70 )
+        {
+            assert workingListSize == TSP_ST70.NUMBER_OF_CITIES;
+        }
+        else if( Parameters.problemNumber == Parameters.TSP_RAT99 )
+        {
+            assert workingListSize == TSP_RAT99.NUMBER_OF_CITIES;
+        }
+        else if( Parameters.problemNumber == Parameters.TSP_RAT195 )
+        {
+            assert workingListSize == TSP_RAT195.NUMBER_OF_CITIES;
+        }
+        else
+        {
+            assert workingListSize == amListSize + ( numberOfClasses - 1);
+        }
+        
+        // now create a solution path though the environment  
+        // that can be added to 'this'
+        
+        Path path = null;
+        Node current = null;
+        Node next = null;
         int nodeCounter = 0;
-// 7 August 2018        
-//        int attsLeft = this.attributeList.size( );
-//        int metsLeft = this.methodList.size( );
-//        int eocLeft = this.numberOfClasses - 1; /* allow space for last */
+        int numberOfCities = 0;
+        
+        // if the problem instance is a TSP...
+        if( Parameters.problemNumber == Parameters.TSP_BERLIN52 || 
+            Parameters.problemNumber == Parameters.TSP_ST70 ||
+            Parameters.problemNumber == Parameters.TSP_RAT99 ||   
+            Parameters.problemNumber == Parameters.TSP_RAT195 )  
+        {
+            if( Parameters.problemNumber == Parameters.TSP_BERLIN52 )
+            {
+                numberOfCities = TSP_Berlin52.NUMBER_OF_CITIES;
+            }
+            else if( Parameters.problemNumber == Parameters.TSP_ST70 )
+            {
+                numberOfCities = TSP_ST70.NUMBER_OF_CITIES;
+            }
+            else if( Parameters.problemNumber == Parameters.TSP_RAT99 )
+            {
+                numberOfCities = TSP_RAT99.NUMBER_OF_CITIES;
+            }
+            else if( Parameters.problemNumber == Parameters.TSP_RAT195 )
+            {
+                numberOfCities = TSP_RAT195.NUMBER_OF_CITIES;
+            }
+            else
+            {
+                assert false : "impossible TSP problem!";
+            }
+            
+            path = new Path( );
+            // classic TSP - select first city at random
+            final int index = Utility.getRandomInRange( 0, numberOfCities - 1 );
+            assert index >= 0;
+            assert index < workingList.size( );
+            current = workingList.remove( index );
+        }    
+        else // must be a software design problem instance    
+        {   
+            path = new Path( new DesignPathRole( ) );
+            // the first node is always the nest
+            current = new Nest( "nest", 0 );
+        }
+        path.add( current );
+     
         
         while( workingList.isEmpty( ) == false )
         {
@@ -147,76 +206,80 @@ public class Ant
             
             // update the counters
             nodeCounter++;
-            
-// 7 August 2018            
-//            if( current instanceof Attribute )
-//            {
-//                attsLeft--;
-//            }
-//            else if( current instanceof Method )
-//            {
-//                metsLeft--;
-//            }
-//            else if( current instanceof EndOfClass )
-//            {
-//                eocLeft--;
-//            }
-//            else
-//            {
-//                assert false: "impossible type of node!!";
-//            }
         }
         
         assert workingList.isEmpty( );
-        assert path.size( ) == workingListSize + 1 /* for the nest */:
-            "working list size is: " + workingListSize +
-            "path size is " + path.size( );
                 
-        // the last node is always an end of class
-        path.add( new EndOfClass( END_OF_CLASS, workingListSize + 1 ) );
-        
-        assert( path.size( ) == amList.size( ) + this.numberOfClasses + 1 /* for the nest */ );
-        
-        if( Parameters.SOLUTION_GENERATION_ROBUSTNESS_CHECK == true )
+        if( Parameters.problemNumber == Parameters.CBS ||
+            Parameters.problemNumber == Parameters.GDP ||
+            Parameters.problemNumber == Parameters.RANDOMISED ||
+            Parameters.problemNumber == Parameters.SC    )
         {
-            Iterator< Node > it = path.iterator( );
-            int counter = 0;
-            while( it.hasNext( ) ) 
-            {
-                Node node = it.next( );
+            assert path.size( ) == workingListSize + 1 /* for the nest */:
+                "working list size is: " + workingListSize +
+                "path size is " + path.size( );
+            
+            // the last node is always an end of class
+            path.add( new EndOfClass( END_OF_CLASS, workingListSize + 1 ) );
+            assert( path.size( ) == amList.size( ) + this.numberOfClasses + 1 /* for the nest */ );
 
-                if( node instanceof EndOfClass )
-                {
-                    counter++;
-                }
-            }
-
-            String s = "";
-            Iterator< Node > it2 = path.iterator( );
-            if( counter != this.numberOfClasses )
+            if( Parameters.SOLUTION_GENERATION_ROBUSTNESS_CHECK == true )
             {
-                while( it2.hasNext( ) )
+                Iterator< Node > it = path.iterator( );
+                int counter = 0;
+                while( it.hasNext( ) ) 
                 {
-                    Node node = it2.next( );
-                    s += ( node.getName( ) + " " + node.getNumber( ) + " ," ); 
+                    Node node = it.next( );
+
                     if( node instanceof EndOfClass )
                     {
-                        System.out.println( s );
-                        s = "";
+                        counter++;
                     }
                 }
+
+                String s = "";
+                Iterator< Node > it2 = path.iterator( );
+                if( counter != this.numberOfClasses )
+                {
+                    while( it2.hasNext( ) )
+                    {
+                        Node node = it2.next( );
+                        s += ( node.getName( ) + " " + node.getNumber( ) + " ," ); 
+                        if( node instanceof EndOfClass )
+                        {
+                            System.out.println( s );
+                            s = "";
+                        }
+                    }
+                }
+                assert counter == this.numberOfClasses;
             }
-            assert counter == this.numberOfClasses;
+        }
+        else /// must be TSP problem instance
+        {
+            assert path.size( ) == numberOfCities:
+                "number of cities in path is: " + path.size( );
+            
+            // go show the nodes of a solution path
+//            Iterator< Node > it = path.iterator( );
+//            while( it.hasNext( ) )
+//            {
+//                Node n = it.next( );
+//                System.out.print( n.getNumber( ) + " " );
+//            }
+//            System.out.println( " " );        
         }
         
-        // when solution path is constructed, assign it to 
+        // after solution path is constructed, assign it to 
         // the current vertices instance variable 
         this.currentPath = path;
         
         // 2 Feb 2016
-        this.valid = checkValidity( path );
-        
-        this.currentPath.setValid( this.valid );
+        if( Parameters.problemNumber != Parameters.TSP_BERLIN52 )
+        {
+            this.valid = checkValidity( path );
+            this.currentPath.setValid( this.valid );
+        }
     }
     
     
@@ -231,6 +294,48 @@ public class Ant
     protected List< Node > createWorkingList( )
     {
         List< Node > workingList = new ArrayList<  >( );
+        
+        // EITHER create a working list for a TSP problem...
+        int numberOfCities = 0;
+        if( Parameters.problemNumber == Parameters.TSP_BERLIN52 || 
+            Parameters.problemNumber == Parameters.TSP_ST70 ||
+            Parameters.problemNumber == Parameters.TSP_RAT99 || 
+            Parameters.problemNumber == Parameters.TSP_RAT195 )   
+        {
+            if( Parameters.problemNumber == Parameters.TSP_BERLIN52 )
+            {
+                numberOfCities = TSP_Berlin52.NUMBER_OF_CITIES;
+            }
+            else if( Parameters.problemNumber == Parameters.TSP_ST70 )
+            {
+                numberOfCities = TSP_ST70.NUMBER_OF_CITIES;
+            }
+            else if( Parameters.problemNumber == Parameters.TSP_RAT99 )
+            {
+                numberOfCities = TSP_RAT99.NUMBER_OF_CITIES;
+            }
+            else if( Parameters.problemNumber == Parameters.TSP_RAT195 )
+            {
+                numberOfCities = TSP_RAT195.NUMBER_OF_CITIES;
+            }
+            else
+            {
+                assert false: "impossible TSP Problem!";
+            }
+            assert numberOfCities > 0;
+            
+            for( int i = 0; i < numberOfCities; i++ )
+            {
+                Node node = new Node( );
+                node.setNumber( i );
+                workingList.add( node );
+            }
+            
+            assert( workingList.size( ) == numberOfCities );
+            return workingList;
+        }
+        
+        // ...OR create working list for a software design problem instance
         
         // easy bit - add the attributes and methods
         assert this.amList.isEmpty( ) == false;

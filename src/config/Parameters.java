@@ -28,9 +28,13 @@ public class Parameters
     public static final int GDP = 2;
     public static final int RANDOMISED = 3;
     public static final int SC = 4;
-    public static final int NUMBER_OF_PROBLEMS = SC + 1;
+    public static final int TSP_BERLIN52 = 5;
+    public static final int TSP_ST70 = 6;
+    public static final int TSP_RAT99 = 7;
+    public static final int TSP_RAT195 = 8;
+    public static final int NUMBER_OF_PROBLEMS = TSP_RAT195 + 1;
 
-    public static int NUMBER_OF_RUNS = 35;
+    public static int NUMBER_OF_RUNS = 50;
    
     // 8 December 2015 - for full robustness check in the generation of solutions
     // turn off for faster execution when happy with solution generation

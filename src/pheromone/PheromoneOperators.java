@@ -84,7 +84,7 @@ public class PheromoneOperators
         }
         
         // 27 November 2015: use the value of the algorithm paramter RHO directly
-        final double evaporationFactor = 1.0 - AlgorithmParameters.RHO;
+        final double evaporationFactor = 1.0 - AlgorithmParameters.rho;
         assert evaporationFactor >= 0.0;
         assert evaporationFactor <= 1.0;
         
@@ -144,6 +144,9 @@ public class PheromoneOperators
      * @param secondWorstInColonyCombined second worst path in the colony w.r.t. Combined
      * @param thirdWorstInColonyCombined third worst path in the colony w.r.t. Combined
      * @param iteration iteration count
+     * @param bpm best paths matrix for iteration
+     * @param bestTSPPathInColony
+     * @param worstTSPPathInColony
      */
     public static void update( 
         PheromoneMatrix pheromoneTable, 
@@ -159,23 +162,47 @@ public class PheromoneOperators
         Path worstInColonyCombined,
         Path secondWorstInColonyCombined,
         Path thirdWorstInColonyCombined,
-        int iteration )
+        int iteration,
+        BestPathsMatrix bpm,
+        Path bestTSPPathInColony,
+        Path secondBestTSPPathInColony,
+        Path thirdBestTSPPathInColony,
+        Path worstTSPPathInColony,
+        Path secondWorstTSPPathInColony,
+        Path thirdWorstTSPPathInColony )
     {
         assert pheromoneTable != null;
         assert colony != null;
         assert colony.size( ) > 0;
-        assert bestInColonyCBO != null;
-        assert bestInColonyNAC != null;
-        assert bestInColonyATMR != null;
-        assert bestInColonyCombined != null;
-        assert secondBestInColonyCombined != null;
-        assert thirdBestInColonyCombined != null;
-        assert worstInColonyCBO != null;
-        assert worstInColonyNAC != null;
-        assert worstInColonyCombined != null;
-        assert secondWorstInColonyCombined != null;
-        assert thirdWorstInColonyCombined != null;
         assert iteration >= 0;
+        assert bpm != null;
+        
+        if( Parameters.problemNumber == Parameters.CBS || 
+            Parameters.problemNumber == Parameters.GDP ||
+            Parameters.problemNumber == Parameters.RANDOMISED ||
+            Parameters.problemNumber == Parameters.SC )
+        {
+            assert bestInColonyCBO != null;
+            assert bestInColonyNAC != null;
+            assert bestInColonyATMR != null;
+            assert bestInColonyCombined != null;
+            assert secondBestInColonyCombined != null;
+            assert thirdBestInColonyCombined != null;
+            assert worstInColonyCBO != null;
+            assert worstInColonyNAC != null;
+            assert worstInColonyCombined != null;
+            assert secondWorstInColonyCombined != null;
+            assert thirdWorstInColonyCombined != null;
+        }
+        else // must be a TSP problem instance
+        {
+            assert bestTSPPathInColony != null; 
+            assert secondBestTSPPathInColony != null; 
+            assert thirdBestTSPPathInColony != null; 
+            assert worstTSPPathInColony != null;
+            assert secondWorstTSPPathInColony != null;
+            assert thirdWorstTSPPathInColony != null;
+        }
         
         if( AlgorithmParameters.algorithm == AlgorithmParameters.SIMPLE_ACO ) 
         {
@@ -185,7 +212,8 @@ public class PheromoneOperators
                 pheromoneTable, 
                 worstInColonyCBO,
                 worstInColonyCombined,
-                iteration );
+                iteration,
+                bpm );
         }
         else if( AlgorithmParameters.algorithm == AlgorithmParameters.MMAS ) 
         {
@@ -203,7 +231,14 @@ public class PheromoneOperators
                 worstInColonyCombined,
                 secondWorstInColonyCombined,
                 thirdWorstInColonyCombined,
-                iteration );
+                iteration,
+                bpm, 
+                bestTSPPathInColony,
+                secondBestTSPPathInColony,
+                thirdBestTSPPathInColony,
+                worstTSPPathInColony,
+                secondWorstTSPPathInColony,
+                thirdWorstTSPPathInColony );
         }
         else
         {
@@ -226,8 +261,17 @@ public class PheromoneOperators
         PheromoneMatrix pheromoneTable, 
         Path worstInColonyCBO,
         Path worstInColonyCombined,
-        int iteration )
+        int iteration,
+        BestPathsMatrix bpm )
     {
+        assert colony != null;
+        assert pheromoneTable != null;
+        assert worstInColonyCBO != null;
+        assert worstInColonyCombined != null;
+        assert iteration >= 0;
+        assert bpm != null;
+        
+        
         // firstly, lay pheromone for every ant in the colony
         Iterator< Path > it = colony.iterator( );
 
@@ -261,14 +305,16 @@ public class PheromoneOperators
                         layAntiPheromoneForPath( 
                             AlgorithmParameters.SIMPLE_ACO,
                             worstInColonyCBO, 
-                            pheromoneTable );
+                            pheromoneTable,
+                            bpm );
                     }
                     else if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED )
                     {
                         layAntiPheromoneForPath( 
                             AlgorithmParameters.SIMPLE_ACO,
                             worstInColonyCombined, 
-                            pheromoneTable );
+                            pheromoneTable,
+                            bpm );
                     }
                     else
                     {
@@ -289,10 +335,11 @@ public class PheromoneOperators
         assert path != null;
         assert pheromoneTable != null;
         
-        double delta = calculateDelta( path );
+        final double delta = calculateDelta( path );
         
         int from = 0, to = 0;
         
+        // in software design problem instances,
         // final node must be an "end of class"
         final int finalNode = path.size( ) - 1;
             
@@ -310,9 +357,9 @@ public class PheromoneOperators
             else if( i == finalNode ) // the last "end of class" marker
             {
                 // do nothing, because the probability of moving from
-                // the last end of class marker is always zero
+                // the last node is always zero
                 
-                assert node instanceof EndOfClass;
+                // assert node instanceof EndOfClass;
             }
             else
             {
@@ -328,14 +375,14 @@ public class PheromoneOperators
                     // is limited to an interval [Tmin, Tmax], which
                     // ensures a minimum degree of search diversification.
                     
-                    if( probability < AlgorithmParameters.MMAS_PHEROMONE_MINIMUM ) 
+                    if( probability < AlgorithmParameters.MMAS_Mmin ) 
                     {
-                        probability = AlgorithmParameters.MMAS_PHEROMONE_MINIMUM;
+                        probability = AlgorithmParameters.MMAS_Mmin;
                     }
                     
-                    if( probability > AlgorithmParameters.MMAS_PHEROMONE_MAXIMUM ) 
+                    if( probability > AlgorithmParameters.MMAS_Mmax ) 
                     {
-                        probability = AlgorithmParameters.MMAS_PHEROMONE_MAXIMUM;
+                        probability = AlgorithmParameters.MMAS_Mmax;
                     }
                 }
 
@@ -365,13 +412,18 @@ public class PheromoneOperators
     private static void layAntiPheromoneForPath( 
         int algorithmParameter,
         Path path, 
-        PheromoneMatrix pheromoneTable )
+        PheromoneMatrix pheromoneTable,
+        BestPathsMatrix bpm )
     {
         assert algorithmParameter >= 0;
         assert path != null;
-        assert pheromoneTable != null;  
+        assert pheromoneTable != null;
+        assert bpm != null;
         
         int from = 0, to = 0;
+        
+        int nodeCounter = 0;
+        int preventCounter = 0;
         
         // final node must be an "end of class"
         final int finalNode = path.size( ) - 1;
@@ -392,7 +444,8 @@ public class PheromoneOperators
                 // do nothing, because the probability of moving from
                 // the last end of class marker is always zero
                 
-                assert node instanceof EndOfClass;
+                // comment out 22 September 2018
+                // assert node instanceof EndOfClass;
             }
             else
             {
@@ -421,9 +474,9 @@ public class PheromoneOperators
                         double probability = pheromoneTable.getProbabilityAt( from, to );
                         probability *= rhoAntipheromoneMMAS; 
 
-                        if( probability < AlgorithmParameters.MMAS_PHEROMONE_MINIMUM )
+                        if( probability < AlgorithmParameters.MMAS_PHEROMONE_MINIMUM_SD )
                         {
-                            probability = AlgorithmParameters.MMAS_PHEROMONE_MINIMUM;
+                            probability = AlgorithmParameters.MMAS_PHEROMONE_MINIMUM_SD;
                         }
 
                         pheromoneTable.setProbabilityAt( from, to, probability );
@@ -432,9 +485,25 @@ public class PheromoneOperators
                     }
                     else // lay down the minimum pheromone
                     {
-                        pheromoneTable.setProbabilityAt( from, to, AlgorithmParameters.MMAS_PHEROMONE_MINIMUM );
-                        // 18 April 2012 symmetrical pheromone update 
-                        pheromoneTable.setProbabilityAt( to, from, AlgorithmParameters.MMAS_PHEROMONE_MINIMUM );
+                        if( AlgorithmParameters.preventInterference == false ) // 21 August 2018
+                        {
+                            pheromoneTable.setProbabilityAt(from, to, AlgorithmParameters.MMAS_PHEROMONE_MINIMUM_SD );
+                            // 18 April 2012 symmetrical pheromone update 
+                            pheromoneTable.setProbabilityAt(to, from, AlgorithmParameters.MMAS_PHEROMONE_MINIMUM_SD );
+                        }
+                        else // we are preventing interference
+                        {
+                            if( bpm.bpMatrix[ from ][ to ] ==  0 )
+                            {
+                                pheromoneTable.setProbabilityAt(from, to, AlgorithmParameters.MMAS_PHEROMONE_MINIMUM_SD );
+                                // symmetrical pheromone update 
+                                pheromoneTable.setProbabilityAt(to, from, AlgorithmParameters.MMAS_PHEROMONE_MINIMUM_SD ); 
+                            }
+                            else
+                            {
+                                preventCounter++;
+                            }
+                        }
                     }
                 }
                 else
@@ -445,7 +514,18 @@ public class PheromoneOperators
                 // advance to next vertex
                 from = to;
             }
+            
+            nodeCounter++;
+            
         }   // end for each vertex in the solution path    
+        
+        // 21 August 2018, for testing...
+//        if( preventCounter > 0 )
+//        {
+//            System.out.println( "nodes in path: " + nodeCounter );
+//            System.out.println( "node interference prevented: " + preventCounter );
+//            System.out.println( " " );
+//        }
     }
   
 
@@ -475,16 +555,22 @@ public class PheromoneOperators
                 rawValue = 1 - path.getCombined( );
                 break;
                 
+            case AlgorithmParameters.TSP_PATH_LENGTH:
+                // see Dorigo & Stutzle, page 72
+                // Delta is one over the total path cost
+                rawValue = 1.0 / path.getTSPPathLength( );
+                break;
+                
             default:
                 assert false : "impossible fitness parameter";
                 break;               
         }  
      
-        assert rawValue >= 0.0;
-        assert rawValue <= 1.0;
+        assert rawValue >= 0.0: "raw value is: " + rawValue;
+        assert rawValue <= 1.0: "raw value is: " + rawValue;
      
-        // calulate delta by raising the raw factor to the power of MU
-        double delta = Math.pow( rawValue, AlgorithmParameters.MU ); 
+        // calculate delta by raising the raw factor to the power of MU
+        double delta = Math.pow(rawValue, AlgorithmParameters.mu ); 
         
         return delta;
     }
@@ -615,6 +701,7 @@ public class PheromoneOperators
      * @param second worst Path in Colony Combined
      * @param third worst Path in Colony Combined
      * @param iteration of the search
+     * @param bpm best paths matrix for this iteration
      */
     private static void performMMASUpdate( 
         List< Path > colony, 
@@ -629,21 +716,53 @@ public class PheromoneOperators
         Path worstPathInColonyCombined,
         Path secondWorstPathInColonyCombined,
         Path thirdWorstPathInColonyCombined,
-        int iteration )
+        int iteration,
+        BestPathsMatrix bpm,
+        Path bestTSPPathInColony,
+        Path secondBestTSPPathInColony,
+        Path thirdBestTSPPathInColony,
+        Path worstTSPPathInColony,
+        Path secondWorstTSPPathInColony,
+        Path thirdWorstTSPPathInColony )
     {
         assert colony != null; 
         assert pheromoneTable != null; 
-        assert bestPathInColonyCBO != null;
-        assert bestPathInColonyNAC != null;
-        assert bestPathInColonyCombined != null;
-        assert secondBestPathInColonyCombined != null;
-        assert thirdBestPathInColonyCombined != null;
-        assert worstPathInColonyCBO != null;
-        assert worstPathInColonyNAC != null;
-        assert worstPathInColonyCombined != null;
-        assert secondWorstPathInColonyCombined != null;
-        assert thirdWorstPathInColonyCombined != null;
-                
+        assert iteration >= 0;
+        assert bpm != null;
+        
+        if( Parameters.problemNumber == Parameters.CBS ||
+            Parameters.problemNumber == Parameters.GDP ||
+            Parameters.problemNumber == Parameters.RANDOMISED ||
+            Parameters.problemNumber == Parameters.SC )
+        {
+            assert bestPathInColonyCBO != null;
+            assert bestPathInColonyNAC != null;
+            assert bestPathInColonyCombined != null;
+            assert secondBestPathInColonyCombined != null;
+            assert thirdBestPathInColonyCombined != null;
+            assert worstPathInColonyCBO != null;
+            assert worstPathInColonyNAC != null;
+            assert worstPathInColonyCombined != null;
+            assert secondWorstPathInColonyCombined != null;
+            assert thirdWorstPathInColonyCombined != null;
+        }
+        else if( Parameters.problemNumber == Parameters.TSP_BERLIN52 ||
+                 Parameters.problemNumber == Parameters.TSP_ST70 ||
+                 Parameters.problemNumber == Parameters.TSP_RAT99 ||
+                 Parameters.problemNumber == Parameters.TSP_RAT195 )
+        {
+            assert bestTSPPathInColony != null; 
+            assert secondBestTSPPathInColony != null; 
+            assert thirdBestTSPPathInColony != null; 
+            assert worstTSPPathInColony != null;
+            assert secondWorstTSPPathInColony != null;
+            assert thirdWorstTSPPathInColony != null;
+        }
+        else
+        {
+            assert false : "impossible fitness in performMMASUPdate( )";
+        }
+        
         if( AlgorithmParameters.fitness == AlgorithmParameters.CBO )    
         {
             layPheromoneForPath( bestPathInColonyCBO, pheromoneTable );
@@ -652,7 +771,8 @@ public class PheromoneOperators
         {
             layPheromoneForPath( bestPathInColonyNAC, pheromoneTable );
         }
-        else if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED )
+        else if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED ||
+                 AlgorithmParameters.fitness == AlgorithmParameters.TSP_PATH_LENGTH )
         {
             assert AlgorithmParameters.pheromoneStrength <= AlgorithmParameters.MMAS_PHEROMONE_TRIPLE;
             assert AlgorithmParameters.pheromoneStrength >= AlgorithmParameters.MMAS_PHEROMONE_SINGLE;
@@ -660,13 +780,52 @@ public class PheromoneOperators
             switch( AlgorithmParameters.pheromoneStrength )
             {
                 case AlgorithmParameters.MMAS_PHEROMONE_TRIPLE:
-                    layPheromoneForPath( thirdWorstPathInColonyCombined, pheromoneTable );
+                    if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED )
+                    {
+                        layPheromoneForPath( thirdBestPathInColonyCombined, pheromoneTable );
+                        bpm.recordPath( thirdBestPathInColonyCombined);
+                    }
+                    else if( AlgorithmParameters.fitness == AlgorithmParameters.TSP_PATH_LENGTH )
+                    {
+                        layPheromoneForPath( thirdBestTSPPathInColony, pheromoneTable );
+                        bpm.recordPath( thirdBestTSPPathInColony );
+                    }
+                    else
+                    {
+                        assert false: "impossible fitness!";
+                    }
 
                 case AlgorithmParameters.MMAS_PHEROMONE_DOUBLE:
-                    layPheromoneForPath( secondBestPathInColonyCombined, pheromoneTable );
+                    if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED )
+                    {
+                        layPheromoneForPath( secondBestPathInColonyCombined, pheromoneTable );
+                        bpm.recordPath( secondBestPathInColonyCombined);
+                    }
+                    else if( AlgorithmParameters.fitness == AlgorithmParameters.TSP_PATH_LENGTH )
+                    {
+                        layPheromoneForPath( secondBestTSPPathInColony, pheromoneTable );
+                        bpm.recordPath( secondBestTSPPathInColony );
+                    }
+                    else
+                    {
+                        assert false: "impossible fitness!";
+                    }
 
                 case AlgorithmParameters.MMAS_PHEROMONE_SINGLE:
-                    layPheromoneForPath( bestPathInColonyCombined, pheromoneTable );
+                    if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED )
+                    {
+                        layPheromoneForPath( bestPathInColonyCombined, pheromoneTable );
+                        bpm.recordPath( bestPathInColonyCombined );
+                    }
+                    else if( AlgorithmParameters.fitness == AlgorithmParameters.TSP_PATH_LENGTH )
+                    {
+                        layPheromoneForPath( bestTSPPathInColony, pheromoneTable );
+                        bpm.recordPath( bestTSPPathInColony );
+                    }
+                    else
+                    {
+                        assert false: "impossible fitness!";
+                    }
                     break;
 
                 default:
@@ -684,6 +843,7 @@ public class PheromoneOperators
         {
             assert iteration <= AlgorithmParameters.NUMBER_OF_ITERATIONS;
             double progress = (double) iteration / (double) AlgorithmParameters.NUMBER_OF_ITERATIONS;
+            assert progress >= 0.0;
             assert progress <= 1.0;
             progress *= 100.0;
             assert progress >= 0.0;
@@ -697,28 +857,64 @@ public class PheromoneOperators
             {
                 if( AlgorithmParameters.fitness == AlgorithmParameters.CBO )    
                 {
-                    layAntiPheromoneForPath( AlgorithmParameters.MMAS, worstPathInColonyCBO, pheromoneTable );
+                    layAntiPheromoneForPath( AlgorithmParameters.MMAS, worstPathInColonyCBO, pheromoneTable, bpm );
                 }
                 else if( AlgorithmParameters.fitness == AlgorithmParameters.NAC )
                 {
-                    layAntiPheromoneForPath( AlgorithmParameters.MMAS, worstPathInColonyNAC, pheromoneTable );
+                    layAntiPheromoneForPath( AlgorithmParameters.MMAS, worstPathInColonyNAC, pheromoneTable, bpm );
                 }
-                else if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED )
+                else if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED ||
+                         AlgorithmParameters.fitness == AlgorithmParameters.TSP_PATH_LENGTH )
                 {
                     assert AlgorithmParameters.antipheromoneStrength <= AlgorithmParameters.ANTIPHEROMONE_STRENGTH_TRIPLE;
-                    assert AlgorithmParameters.antipheromoneStrength >= AlgorithmParameters.ANTIPHEROMONE_STRENGTH_SINGLE;
+                    assert AlgorithmParameters.antipheromoneStrength >= AlgorithmParameters.ANTIPHEROMONE_STRENGTH_SINGLE:
+                            "antipheromone strength is: " + AlgorithmParameters.antipheromoneStrength; 
                     
-                    // 25 July 2017
                     switch( AlgorithmParameters.antipheromoneStrength )
                     {
                         case AlgorithmParameters.ANTIPHEROMONE_STRENGTH_TRIPLE:
-                            layAntiPheromoneForPath(AlgorithmParameters.MMAS,thirdWorstPathInColonyCombined, pheromoneTable );
+                            if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED )
+                            {
+                                layAntiPheromoneForPath(
+                                    AlgorithmParameters.MMAS, thirdWorstPathInColonyCombined, pheromoneTable, bpm );
+                            }
+                            else if( AlgorithmParameters.fitness == AlgorithmParameters.TSP_PATH_LENGTH )
+                            {
+                                layAntiPheromoneForPath( 
+                                    AlgorithmParameters.MMAS, thirdWorstTSPPathInColony, pheromoneTable, bpm );
+                            }
+                            else
+                            {
+                                assert false;
+                            }
                             
                         case AlgorithmParameters.ANTIPHEROMONE_STRENGTH_DOUBLE:
-                            layAntiPheromoneForPath( AlgorithmParameters.MMAS, secondWorstPathInColonyCombined, pheromoneTable );
+                            if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED )
+                            {
+                                layAntiPheromoneForPath( 
+                                    AlgorithmParameters.MMAS, secondWorstPathInColonyCombined, pheromoneTable, bpm );
+                            }
+                            else if( AlgorithmParameters.fitness == AlgorithmParameters.TSP_PATH_LENGTH )
+                            {
+                                layAntiPheromoneForPath( 
+                                    AlgorithmParameters.MMAS, secondWorstTSPPathInColony, pheromoneTable, bpm );
+                            }
                         
                         case AlgorithmParameters.ANTIPHEROMONE_STRENGTH_SINGLE:
-                            layAntiPheromoneForPath( AlgorithmParameters.MMAS, worstPathInColonyCombined, pheromoneTable );
+                            if( AlgorithmParameters.fitness == AlgorithmParameters.COMBINED )
+                            {
+                                layAntiPheromoneForPath( 
+                                    AlgorithmParameters.MMAS, worstPathInColonyCombined, pheromoneTable, bpm );
+                            }
+                            else if( AlgorithmParameters.fitness == AlgorithmParameters.TSP_PATH_LENGTH )
+                            {
+                                layAntiPheromoneForPath( 
+                                    AlgorithmParameters.MMAS, worstTSPPathInColony, pheromoneTable, bpm );
+                            }
+                            else
+                            {
+                                assert false : "impossible fitness in antipheromone update!";
+                            }
                             break;
                             
                         default:
