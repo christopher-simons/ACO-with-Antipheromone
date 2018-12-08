@@ -47,7 +47,7 @@ public class BestPathsMatrix
     public void recordPath( final Path path )
     {
         assert path != null;
-        assert path.size( ) == size;
+        assert path.size( ) == size : "path size is: " + path.size( );
         
         int from = 0;
         int to = 0;

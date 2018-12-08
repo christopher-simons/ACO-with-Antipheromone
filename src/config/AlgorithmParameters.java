@@ -22,28 +22,36 @@ public class AlgorithmParameters
     public static final int CBO = 1;
     public static final int NAC = 2;
     public static final int COMBINED = 3;
-    public static int fitness = COMBINED;
+    public static final int TSP_PATH_LENGTH = 4;
+    public static int fitness = TSP_PATH_LENGTH;
 
     // to ensure only valid paths are generated
-    public static boolean constraintHandling = true;
+    public static boolean constraintHandling = false;
     
-    // ALPHA - parameter controlling pheromone attractiveness
-    private static final double DEFAULT_ALPHA = 1.5; 
-    public static double ALPHA = DEFAULT_ALPHA; 
-    
-    // MU - parameter controlling MMAS update
-    private static final double DEFAULT_MU = 3.0; 
-    public static double MU = DEFAULT_MU;   
+    // alpha - parameter controlling pheromone attractiveness during solution path generation
+    public static final double ALPHA_SD = 1.5; 
+    public static final double ALPHA_TSP = 1.5; 
+    public static double alpha = 0.0; // alpha value is set up in BatchMain
+            
+    // mu - parameter controlling MMAS update
+    public static final double MU_SD = 3.0;
+    public static final double MU_TSP = 1.0; 
+    public static double mu = 0.0; // mu value is set up in BatchMain   
     
     // RHO - pheromone decay coeffient
     public static final double SimpleACO_RHO = 0.1;  // for S-ACO
-    // for MMAS, Dorogo and Stutzle, page 91, suggest 0.02
-    public static final double MMAS_RHO = 0.035; 
-    public static double RHO = 0.0; // RHO value is set up in BatchMain
+    // for MMAS, Dorogo and Stutzle book, page 91, suggests 0.02(!)
+    public static final double MMAS_RHO_SD = 0.035; 
+    public static final double MMAS_RHO_TSP = 0.045;
+    public static double rho = 0.0; // rho value is set up in BatchMain
     
     // MMAS MAX and MIN Pheromone limit levels
-    public static final double MMAS_PHEROMONE_MINIMUM = 0.5;
-    public static final double MMAS_PHEROMONE_MAXIMUM = 3.5;
+    public static final double MMAS_PHEROMONE_MAXIMUM_SD = 3.5;
+    public static final double MMAS_PHEROMONE_MINIMUM_SD = 0.5;
+    public static final double MMAS_PHEROMONE_MAXIMUM_TSP = 2.5;
+    public static final double MMAS_PHEROMONE_MINIMUM_TSP = 0.0;
+    public static double MMAS_Mmax = 0.0; // set up in BatchMain 
+    public static double MMAS_Mmin = 0.0; // set up in BatchMain 
     
     // flag to signal exploitation of heuristic information
     public static boolean heuristics = false;
@@ -59,7 +67,7 @@ public class AlgorithmParameters
     public static boolean objectiveATMR = false;
     
     public static boolean evaporationElitism = true;
-    public static boolean replacementElitism = true;
+    public static boolean replacementElitism = false;
     
     
     // 4 December 2015
@@ -104,7 +112,9 @@ public class AlgorithmParameters
     public static final int ANTIPHEROMONE_STRENGTH_DOUBLE = 2;
     public static final int ANTIPHEROMONE_STRENGTH_TRIPLE = 3;
     public static int antipheromoneStrength = ANTIPHEROMONE_STRENGTH_SINGLE;
-     
+    
+    // MMAS related antipheromone interference prevention parameter
+    public static boolean preventInterference = true;
 }  
 
 // ------ end of file -----------------------------------------

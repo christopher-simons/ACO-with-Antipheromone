@@ -40,10 +40,11 @@ public class HeuristicAnt2 extends Ant
         AlphaMatrix at,
         List< CLSClass > freezeList,
         boolean handlingConstraints,
-        int[ ][ ] useMatrix )
+        int[ ][ ] useMatrix,
+        List< Node > tspNodes )
     {
         //super( nodes, numberOfClasses, at, freezeList, handlingConstraints );
-        super( nodes, attributeList, methodList, numberOfClasses, at, handlingConstraints );
+        super( nodes, attributeList, methodList, numberOfClasses, at, handlingConstraints, tspNodes );
         this.useMatrix = useMatrix; 
     }
 

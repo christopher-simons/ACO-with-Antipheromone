@@ -52,7 +52,15 @@ public class BatchResults
     // 8 August 2018
     private static final String INTERFERENCE_FILE_NAME = "Interference.dat";
     
+    // 28 August 2018
+    private static final String SNAPSHOT_FILE_NAME = "Snapshot.dat";
     
+    // 3 September 2018
+    private static final String INTERFERENCE_ITERATIONS_FOR_SPSS_FILE_NAME = "InterferenceIterationsForSPSS.dat";
+    private static final String INTERFERENCE_ITERATIONS_FOR_GNUPLOT_FILE_NAME = "InterferenceIterationsForGnuPlot.dat";
+    
+    // 18 Septembe 2018
+    private static final String BEST_TSP_FILE_NAME = "BestTSP.dat";
     
     /** number of iterations of ant colony */
     private final int numberOfIterations;
@@ -138,7 +146,7 @@ public class BatchResults
 
     
     //Jim Smith added 22-2-12
-    //1D arrays to hold best fitness fpund for each run, 
+    //1D arrays to hold best fitness found for each run, 
     //and when it was found
     private double[ ] bestCBO; 
     private int [ ] whenCBOfound;
@@ -196,7 +204,30 @@ public class BatchResults
     private double bestFcombStdDev[ ];
     
     // 8 August 2018 for interference investigations
-    public double interference[ ]; 
+    public double interference[ ][ ]; 
+    
+    // 23 August 2018 
+    public double[ ] bestCombinedValueAt50OverRuns;
+    public double[ ] bestCombinedValueAt100OverRuns;
+    public double[ ] bestCombinedValueAt150OverRuns;
+    public double[ ] bestCombinedValueAt200OverRuns;
+    public double[ ] bestCombinedValueAt300OverRuns;
+    public double[ ] bestCombinedValueAt400OverRuns;
+    
+    public double[ ] areaAt50OverRuns;
+    public double[ ] areaAt100OverRuns;
+    public double[ ] areaAt150OverRuns;
+    public double[ ] areaAt200OverRuns;
+    public double[ ] areaAt300OverRuns;
+    public double[ ] areaAt400OverRuns;
+    
+    // 3 Septebmber 2018
+    public double[ ] averageInterference;
+    public double[ ] averageInterferenceStdDev;
+    
+    // 18 September 2018
+    public double[ ] bestTSPLength;
+    public int[ ] whenBestTSPLengthFound;
     
     /**
      * constructor
@@ -372,12 +403,62 @@ public class BatchResults
         }
         
         // 8 August 2018
-        interference = new double[ numberOfRuns ];
+        interference = new double[ numberOfRuns ][ numberOfIterations];
         for( int m = 0; m < numberOfRuns; m++ )
         {
-            interference[ m ] = 0.0;
+            for( int n = 0; n < numberOfIterations; n++ )
+            {
+                interference[ m ][ n ] = 0.0;
+            }
         }
         
+        // 28 August 2018
+        bestCombinedValueAt50OverRuns = new double[ numberOfRuns ];
+        bestCombinedValueAt100OverRuns = new double[ numberOfRuns ];
+        bestCombinedValueAt150OverRuns = new double[ numberOfRuns ];
+        bestCombinedValueAt200OverRuns = new double[ numberOfRuns ];
+        bestCombinedValueAt300OverRuns = new double[ numberOfRuns ];
+        bestCombinedValueAt400OverRuns = new double[ numberOfRuns ];
+        areaAt50OverRuns = new double[ numberOfRuns ];
+        areaAt100OverRuns = new double[ numberOfRuns ];
+        areaAt150OverRuns = new double[ numberOfRuns ];
+        areaAt200OverRuns = new double[ numberOfRuns ];
+        areaAt300OverRuns = new double[ numberOfRuns ];
+        areaAt400OverRuns = new double[ numberOfRuns ];
+        
+        for( int x = 0; x < numberOfRuns; x++ )
+        {
+            bestCombinedValueAt50OverRuns[ x ] = 0.0;
+            bestCombinedValueAt100OverRuns[ x ] = 0.0;
+            bestCombinedValueAt200OverRuns[ x ] = 0.0;
+            bestCombinedValueAt300OverRuns[ x ] = 0.0;
+            bestCombinedValueAt400OverRuns[ x ] = 0.0;
+            areaAt50OverRuns[ x ] = 0.0;
+            areaAt100OverRuns[ x ] = 0.0;
+            areaAt150OverRuns[ x ] = 0.0;
+            areaAt200OverRuns[ x ] = 0.0;
+            areaAt300OverRuns[ x ] = 0.0;
+            areaAt400OverRuns[ x ] = 0.0;
+        }
+        
+        // 3 September 2018
+        averageInterference = new double[ this.numberOfIterations ];
+        averageInterferenceStdDev = new double[ this.numberOfIterations ];
+        
+        for( int y = 0; y < this.numberOfIterations; y++ )
+        {
+            averageInterference[ y ] = 0;
+            averageInterferenceStdDev[ y ] = 0;
+        }
+        
+        // 18 September 2018 for TSP
+        bestTSPLength = new double[ numberOfIterations ];
+        whenBestTSPLengthFound = new int[ numberOfIterations ];
+        for( int z = 0; z < numberOfIterations; z++ )
+        {
+            bestFcomb[ z ] = 0.0;
+            whenBestTSPLengthFound[ z ] = 0;
+        }
     }
     
     /**
@@ -542,6 +623,38 @@ public class BatchResults
             }
             
             this.bestFcombStdDev[ it ] = Utility.standardDeviation( localBestFcomb );
+        }
+        
+        
+        
+        // 5 September 2018
+        double runningTotalInterference[ ] = new double[ numberOfIterations ];
+        
+        for( int it = 0; it < numberOfIterations; it++ )
+        {
+            for( int run = 0; run < numberOfRuns; run++ )
+            {
+                runningTotalInterference[ it ] += this.interference[ run ][ it ]; 
+            }
+        }
+
+        for( int iter = 0; iter < numberOfIterations; iter++ )
+        {
+            this.averageInterference[ iter ] = runningTotalInterference[ iter] / (double) numberOfRuns;
+        }        
+        
+        
+        
+        double localInterference[ ] = new double[ numberOfIterations ];
+        
+        for( int it = 0; it < numberOfIterations; it++ )
+        {
+            for( int run = 0; run < numberOfRuns; run++ )
+            {
+                localInterference[ run ] = this.interference[ run ][ it ]; 
+            }
+            
+            this.averageInterferenceStdDev[ it ] = Utility.standardDeviation( localInterference );
         }
     }
     
@@ -819,22 +932,35 @@ public class BatchResults
         }
         else
         {
-            assert false; // execution should never reach this point    
+            System.out.println( "In writeResults for TSP..."); 
+            outputFileName = "NotRelevant.dat";
         }
         
         // 13 November 2015 for results 
         // 29 June 2017 for retries, attempts and cost curves 
-        // 8 August 2018 for interference
+        // 8 August 2018 and 3 September 2018 for interference
+        // 28 August 2018 for snapshots 
+        // 18 September 2018 for TSP
         String resultsFileFullName = "";
         String retriesFileFullName = "";
         String costFileFullName = "";
         String interferenceFileFullName = "";
+        String snapShotFileFullName = "";
+        String interferenceIterationsForSPSSFileFullName = "";
+        String interferenceIterationsForGnuPlotFileFullName = "";
+        String TSPFileFullName = "";
+        
+        
         if( Parameters.platform == Parameters.Platform.Windows )
         {
             resultsFileFullName = Parameters.outputFilePath + "\\" + outputFileName;
             retriesFileFullName = Parameters.outputFilePath + "\\" + RETRIES_ATTEMPTS_FILE_NAME;
             costFileFullName = Parameters.outputFilePath + "\\" + COST_FILE_NAME;
             interferenceFileFullName = Parameters.outputFilePath + "\\" + INTERFERENCE_FILE_NAME;
+            snapShotFileFullName = Parameters.outputFilePath + "\\" + SNAPSHOT_FILE_NAME;
+            interferenceIterationsForSPSSFileFullName = Parameters.outputFilePath + "\\" + INTERFERENCE_ITERATIONS_FOR_SPSS_FILE_NAME;
+            interferenceIterationsForGnuPlotFileFullName = Parameters.outputFilePath + "\\" + INTERFERENCE_ITERATIONS_FOR_GNUPLOT_FILE_NAME;
+            TSPFileFullName = Parameters.outputFilePath + "\\" + BEST_TSP_FILE_NAME;
         }
         else    // we're on Mac
         {
@@ -842,12 +968,20 @@ public class BatchResults
             retriesFileFullName = Parameters.outputFilePath + "/" + RETRIES_ATTEMPTS_FILE_NAME;
             costFileFullName = Parameters.outputFilePath + "/" + COST_FILE_NAME;
             interferenceFileFullName = Parameters.outputFilePath + "/" + INTERFERENCE_FILE_NAME;
+            snapShotFileFullName = Parameters.outputFilePath + "/" + SNAPSHOT_FILE_NAME;
+            interferenceIterationsForSPSSFileFullName = Parameters.outputFilePath + "/" + INTERFERENCE_ITERATIONS_FOR_SPSS_FILE_NAME;
+            interferenceIterationsForGnuPlotFileFullName = Parameters.outputFilePath + "/" + INTERFERENCE_ITERATIONS_FOR_GNUPLOT_FILE_NAME;
+            TSPFileFullName = Parameters.outputFilePath + "/" + BEST_TSP_FILE_NAME;
         }
         
         System.out.println( "fitness results file name is: " + resultsFileFullName );
         System.out.println( "retries and attempts file name is: " + retriesFileFullName );
         System.out.println( "cost information file name is: " + costFileFullName );
         System.out.println( "interference file name is: " + interferenceFileFullName );
+        System.out.println( "snapshot file name is: " + snapShotFileFullName );
+        System.out.println( "interference iterations for SPSS file name is: " + interferenceIterationsForSPSSFileFullName );
+        System.out.println( "interference iterations for GnuPlot file name is: " + interferenceIterationsForGnuPlotFileFullName );
+        System.out.println( "TSP file name is: " + TSPFileFullName );
         
         final String dir = System.getProperty( "user.dir" );
         System.out.println( "current execution directory is: " + dir );
@@ -857,20 +991,29 @@ public class BatchResults
         PrintWriter out2 = null;
         PrintWriter out3 = null;
         PrintWriter out4 = null;
+        PrintWriter out5 = null;
+        PrintWriter out6 = null;
+        PrintWriter out7 = null;
+        PrintWriter out8 = null;
         
         boolean append = true;
         try 
         {
-            // don't want to overwrite existing result files
+            // we don't want to overwrite existing result files
             out1 = new PrintWriter( new FileWriter( new File( resultsFileFullName), append ) );
             out2 = new PrintWriter( new FileWriter( new File( retriesFileFullName), append ) );
             out3 = new PrintWriter( new FileWriter( new File( costFileFullName), append ) );
             out4 = new PrintWriter( new FileWriter( new File( interferenceFileFullName), append ) );
+            out5 = new PrintWriter( new FileWriter( new File( snapShotFileFullName), append ) );
+            out6 = new PrintWriter( new FileWriter( new File( interferenceIterationsForSPSSFileFullName), append ) );
+            out7 = new PrintWriter( new FileWriter( new File( interferenceIterationsForGnuPlotFileFullName), append ) );
+            out8 = new PrintWriter( new FileWriter( new File( TSPFileFullName), append ) );
+        
         } 
         catch( IOException ex ) 
         {
             Logger.getLogger( BatchResults.class.getName()).log(Level.SEVERE, null, ex );
-            System.out.println( "Can't open " + resultsFileFullName );
+            System.out.println( "Can't open one of the results files!!" );
         }   
         
         // for easier analysis in SPSS 14 Jan 2016
@@ -886,91 +1029,195 @@ public class BatchResults
             MMAS_50_percent_on = 1;
         }
         
+        int prevent = 0;
+        if( AlgorithmParameters.preventInterference == true )
+        {
+            prevent = 1;
+        }
+        
+        assert AlgorithmParameters.antipheromoneStrength >= AlgorithmParameters.ANTIPHEROMONE_STRENGTH_SINGLE;
+        assert AlgorithmParameters.antipheromoneStrength <= AlgorithmParameters.ANTIPHEROMONE_STRENGTH_TRIPLE;
+        
         for( int run = 0; run < numberOfRuns; run++ )
         {
-            int evalsWhenCBOFound = this.whenCBOfound[ run ] * AlgorithmParameters.NUMBER_OF_ANTS;
-            int evalsWhenNACFound = this.whenNACFound[ run ] * AlgorithmParameters.NUMBER_OF_ANTS;
+//            int evalsWhenCBOFound = this.whenCBOfound[ run ] * AlgorithmParameters.NUMBER_OF_ANTS;
+//            int evalsWhenNACFound = this.whenNACFound[ run ] * AlgorithmParameters.NUMBER_OF_ANTS;
             int evalsWhenCombinedFound = this.whenCombinedFound[ run ] * AlgorithmParameters.NUMBER_OF_ANTS;
-        
+            assert out1 != null;
+            
+            int localCopyOfAntipheromoneStrength = 0;
+            if( antiPheromoneOn == 0 )
+            {
+                // do nothing, local copy of antipheromone strength stays at zero
+            }
+            else
+            {
+                localCopyOfAntipheromoneStrength = AlgorithmParameters.antipheromoneStrength;
+            }
+            
             out1.println(   Parameters.problemNumber  + " " +
                             ( run + 1 )  + " " + 
-                            AlgorithmParameters.fitness + " " +
-                            AlgorithmParameters.algorithm + " " +
-                            AlgorithmParameters.NUMBER_OF_ANTS + " " +
+//                            AlgorithmParameters.fitness + " " +
+//                            AlgorithmParameters.algorithm + " " +
+//                            AlgorithmParameters.NUMBER_OF_ANTS + " " +
                             antiPheromoneOn + " " +
                             AlgorithmParameters.antiPheromonePhasePercentage + " " +
-                            MMAS_50_percent_on + " " + 
-                            
-                            df.format( this.bestCBO[ run ] ) + " " + 
-                            evalsWhenCBOFound + " " +
-                            
-                            df.format( this.bestNAC[ run ] ) + " " + 
-                            evalsWhenNACFound + " " +
-                            
+//                            MMAS_50_percent_on + " " + 
+//                            df.format( this.bestCBO[ run ] ) + " " + 
+//                            evalsWhenCBOFound + " " +
+//                            df.format( this.bestNAC[ run ] ) + " " + 
+//                            evalsWhenNACFound + " " +
                             df.format( this.bestCombined[ run ] ) + " " + 
                             evalsWhenCombinedFound + " " +
                     
                             // 26 June 2018
                             // this.maxNumberOfInvalids[ run ] );
-                            AlgorithmParameters.pheromoneStrength + " " +
-                            AlgorithmParameters.antipheromoneStrength );
+                            localCopyOfAntipheromoneStrength + " " +
+                            AlgorithmParameters.antipheromoneStrength + " " + 
+                            
+                            // 21 August 2018
+                            prevent );
         }
             
+        
         // 28 June 2017 for adaptive antipheromone
         // write retry and attempt information to file
-//        for( int iteration = 0; iteration < numberOfIterations; iteration++ )
-//        {
-//            out2.println(   // Parameters.problemNumber  + " " +
-//                            ( iteration + 1 )  + " " + 
-//                            // AlgorithmParameters.fitness + " " +
-//                            // AlgorithmParameters.algorithm + " " +
-//                            // AlgorithmParameters.NUMBER_OF_ANTS + " " +
-//                            // antiPheromoneOn + " " +
-//                            // AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " " +
-//                            // MMAS_50_percent_on + " " + 
-//                    
-//                            df.format( this.averageRetries[ iteration ] ) + " " +
-//                            df.format( this.retriesStdDev[ iteration ] ) + " " +
-//                                    
-//                            df.format( this.averageOfAverageAttempts[ iteration ] ) + " " +
-//                            df.format( this.attemptsStdDev[ iteration ]) );
-//        }
+        for( int iteration = 0; iteration < numberOfIterations; iteration++ )
+        {
+            assert out2 != null;
+            out2.println(   
+                Parameters.problemNumber  + " " +
+                AlgorithmParameters.pheromoneStrength + " " +
+                AlgorithmParameters.antipheromoneStrength + " " +
+                prevent + " " +
+                antiPheromoneOn + " " +
+                AlgorithmParameters.antiPheromonePhasePercentage + " " +
+
+                ( iteration + 1 )  + " " + 
+                df.format( this.averageRetries[ iteration ] ) + " " +
+                df.format( this.retriesStdDev[ iteration ] ) + " " +
+                df.format( this.averageOfAverageAttempts[ iteration ] ) + " " +
+                df.format( this.attemptsStdDev[ iteration ]) );
+        }
         
-        // 29 June 2017 for adaptive antipheromone
+        
+        
+        // 29 June 2017 
         // write cost information to file
-//        for( int iteration = 0; iteration < numberOfIterations; iteration++ )
-//        {
-//            out3.println(   // Parameters.problemNumber  + " " +
-//                            ( iteration + 1 )  + " " + 
-//                            // AlgorithmParameters.fitness + " " +
-//                            // AlgorithmParameters.algorithm + " " +
-//                            // AlgorithmParameters.NUMBER_OF_ANTS + " " +
-//                            // antiPheromoneOn + " " +
-//                            // AlgorithmParameters.ANTIPHEROMONE_PHASE_THRESHOLD_PERCENTAGE + " " +
-//                            // MMAS_50_percent_on + " " + 
-//                    
-//                            df.format( this.bestFcomb[ iteration ] ) + " " +
-//                            df.format( this.bestFcombStdDev[ iteration ] ) );
-//                                    
-//        }
+        for( int iteration = 0; iteration < numberOfIterations; iteration++ )
+        {
+            assert out3 != null;
+            out3.println(   
+                Parameters.problemNumber  + " " +
+                AlgorithmParameters.pheromoneStrength + " " +
+                AlgorithmParameters.antipheromoneStrength + " " +
+                prevent + " " +
+                antiPheromoneOn + " " +
+                AlgorithmParameters.antiPheromonePhasePercentage + " " +
+                ( iteration + 1 )  + " " + 
+                
+                df.format( this.bestFcomb[ iteration ] ) + " " +
+                df.format( this.bestFcombStdDev[ iteration ] ) );
+        }
+        
         
         // 8 August 2018
         for( int run = 0; run < numberOfRuns; run++ )
         {
-            out4.println(   Parameters.problemNumber + " " + 
-                            AlgorithmParameters.pheromoneStrength  + " " +            
-                            AlgorithmParameters.antipheromoneStrength  + " " +
-                            AlgorithmParameters.antiPheromonePhasePercentage + " " +
-                            ( run + 1 ) + " " + 
-                            df.format( this.interference[ run ] ) );
+            assert out4 != null;
+            out4.println(   
+                Parameters.problemNumber + " " + 
+                AlgorithmParameters.pheromoneStrength  + " " +            
+                AlgorithmParameters.antipheromoneStrength  + " " +
+                prevent + " " +
+                antiPheromoneOn + " " +
+                AlgorithmParameters.antiPheromonePhasePercentage + " " +
+                ( run + 1 ) + " " + 
+                df.format( this.interference[ run ][ numberOfIterations - 1 ] ) );
         }
         
+        // 23 August 2018
+        for( int run = 0; run < numberOfRuns; run++ )
+        {
+            assert out5 != null;
+            out5.println(   
+                Parameters.problemNumber + " " + 
+                AlgorithmParameters.pheromoneStrength  + " " +            
+                AlgorithmParameters.antipheromoneStrength  + " " +
+                prevent + " " +
+                antiPheromoneOn + " " +
+                AlgorithmParameters.antiPheromonePhasePercentage + " " +
+                ( run + 1 ) + " " + 
+                df.format( this.bestCombinedValueAt50OverRuns[ run ] ) + " " +
+                df.format( this.bestCombinedValueAt100OverRuns[ run ] ) + " " +
+                df.format( this.bestCombinedValueAt150OverRuns[ run ] ) + " " +
+                df.format( this.bestCombinedValueAt200OverRuns[ run ] ) + " " +
+                df.format( this.bestCombinedValueAt300OverRuns[ run ] ) + " " +
+                df.format( this.bestCombinedValueAt400OverRuns[ run ] ) + " " + 
+                df.format( this.areaAt50OverRuns[ run ] ) + " " + 
+                df.format( this.areaAt100OverRuns[ run ] ) + " " +
+                df.format( this.areaAt150OverRuns[ run ] ) + " " +
+                df.format( this.areaAt200OverRuns[ run ] ) + " " +
+                df.format( this.areaAt300OverRuns[ run ] ) + " " +
+                df.format( this.areaAt400OverRuns[ run ] ) );
+        }
+        
+        
+        // 3 September 2018 
+        // write information regarding interference at iterations to file
+        for( int iteration = 0; iteration < numberOfIterations; iteration++ )
+        {
+            assert out6 != null;
+            assert out7 != null;
+            
+            // for SPSS...
+            out6.println(   
+                Parameters.problemNumber  + " " +
+                AlgorithmParameters.pheromoneStrength + " " +
+                AlgorithmParameters.antipheromoneStrength + " " +
+                prevent + " " +
+                antiPheromoneOn + " " +
+                AlgorithmParameters.antiPheromonePhasePercentage + " " +
+                ( iteration + 1 )  + " " + 
+                df.format( this.averageInterference[ iteration ] ) + " " +
+                df.format( this.averageInterferenceStdDev[ iteration ] ) );
+            
+            // for GnuPlot 
+            out7.println(   
+                ( iteration + 1 )  + " " + 
+                df.format( this.averageInterference[ iteration ] ) + " " +
+                df.format( this.averageInterferenceStdDev[ iteration ] ) );
+        }
+        
+        
+        // 18 September 2018
+        for( int run = 0; run < numberOfRuns; run++ )
+        {
+            int evalsWhenTSPBestFound = this.whenBestTSPLengthFound[ run ] * AlgorithmParameters.NUMBER_OF_ANTS;
+            assert out8 != null;
+            
+            out8.println(Parameters.problemNumber  + " " +
+                            AlgorithmParameters.fitness + " " +
+                            AlgorithmParameters.pheromoneStrength + " " +
+                            AlgorithmParameters.antipheromoneStrength + " " + 
+                            prevent + " " +
+                            ( run + 1 )  + " " + 
+                            antiPheromoneOn + " " +
+                            AlgorithmParameters.antiPheromonePhasePercentage + " " +
+                            df.format(this.bestTSPLength[ run ] ) + " " + 
+                            evalsWhenTSPBestFound );
+        }
+
         out1.close( );
         out2.close( );
         out3.close( );
         out4.close( );
+        out5.close( );
+        out6.close( );
+        out7.close( );
+        out8.close( );
+        
     }
-     
     
 }   // end class
 

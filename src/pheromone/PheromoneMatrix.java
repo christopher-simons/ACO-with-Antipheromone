@@ -22,7 +22,7 @@ public class PheromoneMatrix
     /** initial probability value */
     private static final double INITIAL_PROBABILITY = 1.0;
     
-    private static final double MMAS_INITIAL_PROBABILITY = AlgorithmParameters.MMAS_PHEROMONE_MAXIMUM;
+    //private static final double MMAS_INITIAL_PROBABILITY = AlgorithmParameters.MMAS_PHEROMONE_MAXIMUM_SD;
     
     private static final double HEURISTIC_LOAD_FACTOR = 1.0;
 
@@ -37,7 +37,7 @@ public class PheromoneMatrix
     
       
     /** size of both 'x' and 'y' dimensions of table */
-    private final int size;
+    private int size;
     
     /**
      * construct a pheromone table
@@ -49,29 +49,75 @@ public class PheromoneMatrix
         List< Node > amList, int numberOfClasses, ProblemController problemController )
     {
        assert amList != null;
-       assert amList.size( ) > 0;
-       assert numberOfClasses > 0;
+       assert amList.size( ) >= 0;
+       assert numberOfClasses >= 0;
        assert problemController != null;
        
        this.amList = amList;
        
-       this.size = amList.size( ) + numberOfClasses + 1; // plus one for the nest
-       
-       matrix = new double[ size ][ size ];
-       
-       for( int i = 0; i < size; i++ )
+       if( problemController.getCurrentProblemInstance( ) == Parameters.TSP_BERLIN52 )
        {
-           for( int j = 0; j < size; j++ )
-           {
-               matrix[ i ][ j ] = 0.0;
-           }
+           initialiseMatrixForTSP( TSP_Berlin52.NUMBER_OF_CITIES );
        }
-       
-       initialisePheromone( problemController );
+       else if( problemController.getCurrentProblemInstance( ) == Parameters.TSP_ST70 )
+       {
+           initialiseMatrixForTSP( TSP_ST70.NUMBER_OF_CITIES );
+       }
+       else if( problemController.getCurrentProblemInstance( ) == Parameters.TSP_RAT99 )
+       {
+           initialiseMatrixForTSP( TSP_RAT99.NUMBER_OF_CITIES );
+       }
+       else if( problemController.getCurrentProblemInstance( ) == Parameters.TSP_RAT195 )
+       {
+           initialiseMatrixForTSP( TSP_RAT195.NUMBER_OF_CITIES );
+       }
+       else // must be one of CBS, GDP, Randomised, SC
+       {
+           this.size = amList.size( ) + numberOfClasses + 1; // plus one for the nest
+
+           matrix = new double[ size ][ size ];
+
+           for( int i = 0; i < size; i++ )
+           {
+               for( int j = 0; j < size; j++ )
+               {
+                   matrix[ i ][ j ] = 0.0;
+               }
+           }
+
+           initialisePheromone( problemController );
+       }
        
        // for testing
 //       show( );
     }  
+    
+    // 26 November 2018
+    private void initialiseMatrixForTSP(final int numberOfCities ) 
+    {
+        assert numberOfCities > 0;
+        // System.out.println( "size of pheromone matrix is: " + numberOfCities );
+        this.size = numberOfCities;
+
+        this.matrix = new double[ this.size ][ this.size ];
+
+        // assume we're using the MMAS algorithm 
+        for( int i = 0; i < this.size; i++ )
+        {
+            for( int j = 0; j < this.size; j++ )
+            {
+                this.matrix[ i ][ j ] = AlgorithmParameters.MMAS_PHEROMONE_MAXIMUM_TSP;
+            }
+        }
+
+        // and the same 'x' and 'y' coordinate is not
+        // logically feasible, so set to 0.0
+        for( int k = 0; k < this.size; k++ )
+        {
+            this.matrix[ k ][ k ] = 0.0;
+        }
+    }
+    
     
     /**
      * initialise the pheromone with heuristics
@@ -97,7 +143,7 @@ public class PheromoneMatrix
             {
                 if( AlgorithmParameters.algorithm == AlgorithmParameters.MMAS )
                 {
-                    matrix[ i ][ j ] = MMAS_INITIAL_PROBABILITY;
+                    matrix[ i ][ j ] = AlgorithmParameters.MMAS_PHEROMONE_MAXIMUM_SD;
                 }
                 else
                 {
